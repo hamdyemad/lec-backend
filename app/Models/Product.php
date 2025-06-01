@@ -30,6 +30,10 @@ class Product extends Model
         return $this->belongsToMany(Specification::class, 'products_specifications', 'product_id', 'specification_id');
     }
 
+    public function recently_views() {
+        return $this->belongsToMany(User::class, 'recently_views', 'product_id', 'user_id');
+    }
+
     public function colors() {
         return $this->hasMany(ProductColor::class, 'product_id');
     }

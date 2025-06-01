@@ -54,9 +54,6 @@ class User extends Authenticatable
 
 
 
-    public function driver() {
-        return $this->hasOne(Driver::class, 'user_id');
-    }
 
     public function locations() {
         return $this->hasMany(UserLocation::class, 'user_id');
@@ -66,82 +63,16 @@ class User extends Authenticatable
         return $this->hasMany(Product::class, 'seller_id');
     }
 
-    public function features() {
-        return $this->hasMany(Feature::class, 'user');
-    }
 
 
-    // Client
-    public function orders() {
-        return $this->hasMany(Order::class, 'client_id');
-    }
-
-    // Driver
-    public function driver_orders() {
-        return $this->hasMany(Order::class, 'driver_id');
-    }
-
-    // Seller
-    public function pickups() {
-        return $this->hasMany(OrderPickup::class, 'seller_id');
-    }
-
-    public function carts() {
-        return $this->hasMany(Cart::class, 'client_id');
-    }
-
-    public function withdrawls() {
-        return $this->hasMany(WalletWithdrawl::class, 'user_id');
-    }
-
-    public function iban() {
-        return $this->hasOne(Iban::class, 'user_id');
-    }
-
-    public function transactions() {
-        return $this->hasMany(WalletTransaction::class, 'user_id');
-    }
-
-
-    public function rates() {
-        return $this->hasMany(Rate::class, 'from_user_id');
-    }
-
-    public function seller_rates() {
-        return $this->hasMany(Rate::class, 'to_user_id');
+    public function recent_searches() {
+        return $this->hasMany(RecentSearch::class, 'user_id');
     }
 
     public function favorite_products() {
         return $this->hasMany(FavoriteProduct::class, 'user_id');
     }
 
-
-    public function sentMessages()
-    {
-        return $this->hasMany(Message::class, 'sender_id');
-    }
-
-    public function receivedMessages()
-    {
-        return $this->hasMany(Message::class, 'receiver_id');
-    }
-
-    public function track_location()
-    {
-        return $this->hasMany(TrackLocation::class, 'user_id');
-    }
-
-    public function category()
-    {
-        return $this->belongsTo(Feature::class, 'category_id')->select([
-            'id',
-            'feature',
-            'title',
-            'image',
-            'created_at',
-            'updated_at'
-        ]);
-    }
 
 
     public function roles() {

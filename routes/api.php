@@ -135,6 +135,8 @@ Route::group(['middleware' => 'translate'], function() {
 
         // Home Page
         Route::get('/home', [HomeController::class, 'home']);
+        Route::get('/recent-searches', [HomeController::class, 'recent_searches']);
+        Route::delete('/recent-searches', [HomeController::class, 'remove_recent_searches']);
 
 
     });

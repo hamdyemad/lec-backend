@@ -30,6 +30,44 @@ class ProductController extends Controller
 
     public function index(Request $request)
     {
+        $authUser = auth()->user();
+
+        $validator = Validator::make($request->all(), [
+            'per_page' => ['nullable', 'integer', 'min:1'],
+            'recently_views' => ['nullable', 'boolean'],
+            'category_id' => ['nullable', 'exists:categories,id'],
+            'keyword' => ['nullable', 'string', 'max:255'],
+        ]);
+        if($validator->fails()) {
+            $message = implode('<br>', $validator->errors()->all());
+            return $this->sendRes($message, false, [], $validator->errors(), 400);
+        }
+        $keyword = $request->keyword ?? '';
+        $recently_views = $request->recently_views ?? false;
+        $category_id = $request->category_id ?? '';
+
+        $products = Product::with('specifications', 'versions', 'colors')->latest();
+
+        if($recently_views) {
+            $products = $products->whereHas('recently_views', function($query) use ($authUser) {
+                    $query->where('user_id', $authUser->id);
+            })->latest();
+        }
+
+        if($category_id) {
+            $products = $products->where('category_id', $category_id);
+        }
+        if($keyword) {
+            $products = $products
+            ->where('title', 'like', "%$keyword%")
+            ->orWhere('content', 'like', "%$keyword%");
+
+            $authUser->recent_searches()->updateOrCreate(
+                ['keyword' => $keyword]
+            );
+        }
+
+
         $products = Product::with('specifications', 'versions', 'colors')->latest();
         $per_page = $request->get('per_page', 12);
         $products = $products->paginate($per_page);
@@ -159,6 +197,8 @@ class ProductController extends Controller
         if(!$product) {
             return $this->sendRes(translate('product not found'), false, [], [], 400);
         }
+
+        $product->recently_views()->sync(auth()->id()); // Add to recently viewed
         return $this->sendRes(translate('product found'), true, $product);
     }
 
