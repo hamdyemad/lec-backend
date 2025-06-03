@@ -17,10 +17,10 @@ class WatsappService {
     ];
 
     public function __construct() {
-        $this->access_token = 'EAAPZBfXIoMKIBOyWTtTqpkcbZCCHCUtOg42nxPEOncM8qKvuEhB7ZAteug7BWRyO671KaEhPN5XZAES8rDNQYfqzZBEWZAPg0vLig59UjrpfM1dTxCL31PI2vOGILJuzzNlv3cw8a7aLCca46W6txYP8KjvJZCDEE3IBnRc76x44qTodzZAcVpfYLerUs1VC6EUhGDcXVeiI2D5OzrZC511aUOZAtqr8rsRtbETtR8gzZATUZB4wxjHw4dYZD';
-        $this->phone_number_id = '603840889489486';
-        $this->watsapp_business_account_id = '1425655498870407';
-        $this->version = 'v22.0';
+        $this->access_token = env('WATSAPPSERVICE_ACCESS_TOKEN');
+        $this->phone_number_id = env('WATSAPPSERVICE_PHONE_NUMBER_ID');
+        $this->watsapp_business_account_id = env('WATSAPPSERVICE_BUSINESS_ACCOUNT_ID');
+        $this->version = env('WATSAPPSERVICE_API_VERSION');
     }
 
     function send_verify($mobile, $code, $template = 'verify_1') {
