@@ -38,6 +38,10 @@ class Product extends Model
         return $this->hasMany(ProductColor::class, 'product_id');
     }
 
+    public function addons() {
+        return $this->hasMany(ProductAddon::class, 'product_id');
+    }
+
 
     public function items() {
         return $this->hasMany(ProductItem::class, 'product_id');

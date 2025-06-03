@@ -146,6 +146,7 @@ class ProductController extends Controller
             $product->specifications()->detach(); // Detach old specifications
             $product->versions()->delete(); // Delete old versions
             $product->colors()->delete();
+            $product->addons()->delete();
             $product->update($data);
         } else {
             $message = translate('product addedd successfully');
@@ -175,6 +176,15 @@ class ProductController extends Controller
             }
         }
 
+        if($request->addons) {
+            foreach($request->addons as $addon) {
+                $product->addons()->create([
+                    'name' => $addon['name'],
+                    'price' => $addon['price'],
+                ]);
+            }
+        }
+
         return $this->sendRes($message, true, $product);
     }
 
@@ -195,7 +205,7 @@ class ProductController extends Controller
 
 
     public function show(Request $request, $uuid) {
-        $product = Product::with('specifications', 'versions', 'colors')->where('uuid', $uuid)->first();
+        $product = Product::with('specifications', 'versions', 'colors', 'addons')->where('uuid', $uuid)->first();
         if(!$product) {
             return $this->sendRes(translate('product not found'), false, [], [], 400);
         }
