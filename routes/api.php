@@ -70,6 +70,7 @@ Route::group(['middleware' => 'translate'], function() {
     Route::group(['prefix' => 'auth'], function() {
 
         Route::post('/login', [AuthController::class, 'login']);
+        Route::get('/profile', [AuthController::class, 'profile'])->middleware('auth:sanctum');
 
         // Sign up
         Route::group(['prefix' => 'sign-up'], function() {
@@ -92,16 +93,16 @@ Route::group(['middleware' => 'translate'], function() {
         // Categories
         Route::group(['prefix' => 'categories'], function() {
             Route::get('/', [CategoryController::class, 'index']);
-            Route::post('/', [CategoryController::class, 'store']);
+            Route::post('/', [CategoryController::class, 'store'])->middleware('auth_type:admin');
             Route::get('/{uuid}', [CategoryController::class, 'show']);
-            Route::post('/{uuid}', [CategoryController::class, 'edit']);
-            Route::delete('/{uuid}', [CategoryController::class, 'delete']);
+            Route::post('/{uuid}', [CategoryController::class, 'edit'])->middleware('auth_type:admin');
+            Route::delete('/{uuid}', [CategoryController::class, 'delete'])->middleware('auth_type:admin');
         });
 
         // Languages
         Route::group(['prefix' => 'languages'], function() {
             Route::get('/', [LanguageController::class, 'index']);
-            Route::post('/', [LanguageController::class, 'update_translation']);
+            Route::post('/', [LanguageController::class, 'update_translation'])->middleware('auth_type:admin');
             Route::get('/{uuid}', [LanguageController::class, 'show']);
         });
 
@@ -109,10 +110,10 @@ Route::group(['middleware' => 'translate'], function() {
         // Products
         Route::group(['prefix' => 'products'], function() {
             Route::get('/', [ProductController::class, 'index']);
-            Route::post('/', [ProductController::class, 'store']);
-            Route::post('/{id}', [ProductController::class, 'edit']);
+            Route::post('/', [ProductController::class, 'store'])->middleware('auth_type:admin');
+            Route::post('/{id}', [ProductController::class, 'edit'])->middleware('auth_type:admin');
             Route::get('/{id}', [ProductController::class, 'show']);
-            Route::delete('/{id}', [ProductController::class, 'delete']);
+            Route::delete('/{id}', [ProductController::class, 'delete'])->middleware('auth_type:admin');
         });
 
         // Favorite Products
@@ -126,10 +127,10 @@ Route::group(['middleware' => 'translate'], function() {
         // specifications
         Route::group(['prefix' => 'specifications'], function() {
             Route::get('/', [SpecificationController::class, 'index']);
-            Route::post('/', [SpecificationController::class, 'store']);
+            Route::post('/', [SpecificationController::class, 'store'])->middleware('auth_type:admin');
             Route::get('/{uuid}', [SpecificationController::class, 'show']);
-            Route::post('/{uuid}', [SpecificationController::class, 'edit']);
-            Route::delete('/{uuid}', [SpecificationController::class, 'delete']);
+            Route::post('/{uuid}', [SpecificationController::class, 'edit'])->middleware('auth_type:admin');
+            Route::delete('/{uuid}', [SpecificationController::class, 'delete'])->middleware('auth_type:admin');
         });
 
 

@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DemoUser;
 use App\Models\User;
+use App\Service\WatsappService;
 use App\Traits\FileUploads;
 use App\Traits\Res;
+use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -20,7 +23,7 @@ class AuthController extends Controller
 
 
 
-    public function __construct() {
+    public function __construct(public WatsappService $watsappService) {
     }
 
 
@@ -75,6 +78,17 @@ class AuthController extends Controller
 
     }
 
+    public function profile(Request $request)
+    {
+
+        $user = auth()->user();
+        return $this->sendRes(translate('user data'), true, $user, [], 200);
+
+    }
+
+
+
+
     // Registers
     // Step 1
     public function register_step_1(Request $request) {
@@ -121,17 +135,38 @@ class AuthController extends Controller
             $message = implode('<br>', $validator->errors()->all());
             return $this->sendRes($message, false, [], $validator->errors(), 400);
         }
+        $code = $this->generate_rand_code();
         $demo_user =  DemoUser::where([
             'uuid' => $request->uuid,
             'status' => false
         ])->first();
         if($demo_user) {
             $demo_user->update([
-                'code' => $this->generate_rand_code(),
+                'code' => Hash::make($code),
+                'last_code' => Carbon::now()->addMinutes(10),
                 'mobile_code' => $request->mobile_code,
                 'mobile' => $request->mobile,
             ]);
-            return $this->sendRes(translate('please confirm the step3 of registration to confirm'), true, $demo_user, [], 200);
+            $full_mobile = $demo_user->mobile_code . $demo_user->mobile;
+
+            try {
+                $response = $this->watsappService->send_verify($full_mobile, $code);
+            } catch(Exception $e) {
+                // return $this->sendRes(translate('failed to send verification code, please try again later'), false, [], [], 500);
+            }
+
+            $data = [
+                'id' => $demo_user->id,
+                'uuid' => $demo_user->uuid,
+                'name' => $demo_user->name,
+                'email' => $demo_user->email,
+                'status' => $demo_user->status,
+                'mobile_code' => $demo_user->mobile_code,
+                'mobile' => $demo_user->mobile,
+                'code' => $code,
+                'last_code' => $demo_user->last_code,
+            ];
+            return $this->sendRes(translate('please confirm the step3 of registration to confirm'), true, $data, [], 200);
         } else {
             return $this->sendRes(translate('user not found'), false, [], [], 400);
         }
@@ -154,33 +189,38 @@ class AuthController extends Controller
 
         $demo_user =  DemoUser::where([
             'uuid' => $request->uuid,
-            'code' => $request->code,
+            'status' => false
         ])->first();
         if($demo_user) {
+            // Check if the code is expired
+            if(Carbon::now()->greaterThan($demo_user->last_code)) {
+                return $this->sendRes(translate('verification code has been expired'), false, [], [], 400);
+            }
+            // Check if the code is correct
+            if(!Hash::check($request->code, $demo_user->code)) {
+                return $this->sendRes(translate('verification code is incorrect'), false, [], [], 400);
+            }
             if($demo_user->status == false) {
-                if($demo_user->code == $request->code) {
-                    $demo_user->update([
-                        'status' => true,
-                    ]);
-                    $user = User::create([
-                        'uuid' => $demo_user->uuid,
-                        'name' => $demo_user->name,
-                        'email' => $demo_user->email,
-                        'mobile' => $demo_user->mobile,
-                        'mobile_code' => $demo_user->mobile_code,
-                        'password' => $demo_user->password,
-                        'status' => true,
-                    ]);
-                    $token = $user->createToken('login');
-                    $userToken = $token->plainTextToken;
-                    $data = [
-                        'user' => $user,
-                        'token' => $userToken
-                    ];
-                    return $this->sendRes(translate('verification code has been verified'), true, $data, [], 200);
-                } else {
-                    return $this->sendRes(translate('verification code is incorrect'), false, [], [], 400);
-                }
+                $demo_user->update([
+                    'status' => true,
+                ]);
+                $user = User::create([
+                    'uuid' => $demo_user->uuid,
+                    'name' => $demo_user->name,
+                    'email' => $demo_user->email,
+                    'mobile' => $demo_user->mobile,
+                    'mobile_code' => $demo_user->mobile_code,
+                    'password' => $demo_user->password,
+                    'status' => true,
+                    'user_type_id' => '3',
+                ]);
+                $token = $user->createToken('login');
+                $userToken = $token->plainTextToken;
+                $data = [
+                    'user' => $user,
+                    'token' => $userToken
+                ];
+                return $this->sendRes(translate('verification code has been verified'), true, $data, [], 200);
             } else {
                 return $this->sendRes(translate('This user has been verified before'), false, [], [], 400);
             }
@@ -211,9 +251,18 @@ class AuthController extends Controller
             'status' => 1,
         ])->first();
         if($user) {
-            $user->code = $this->generate_rand_code();
-            $user->save();
+            $code = $this->generate_rand_code();
             $full_mobile = $user->mobile_code . $user->mobile;
+
+            try {
+                $response = $this->watsappService->send_verify($full_mobile, $code, 'verify_password_recovery');
+            } catch(Exception $e) {
+                // return $this->sendRes(translate('failed to send verification code, please try again later'), false, [], [], 500);
+            }
+
+            $user->code = Hash::make($code);
+            $user->last_code = Carbon::now()->addMinutes(10);
+            $user->save();
             $data = [
                 'id' => $user->id,
                 'uuid' => $user->uuid,
@@ -222,7 +271,7 @@ class AuthController extends Controller
                 'status' => $user->status,
                 'mobile_code' => $user->mobile_code,
                 'mobile' => $user->mobile,
-                'code' => $user->code
+                'code' => $code
             ];
 
             return $this->sendRes(translate('vefication code has been sent to: ' . $full_mobile), true, $data, [], 200);
@@ -253,7 +302,7 @@ class AuthController extends Controller
             'status' => 1,
         ])->first();
         if($user) {
-            if($user->code != $request->code) {
+            if(!Hash::check($request->code, $user->code)) {
                 return $this->sendRes(translate('code is incorrect'), false, [], [], 400);
             } else {
                 $new_hashed_password = Hash::make($request->password);

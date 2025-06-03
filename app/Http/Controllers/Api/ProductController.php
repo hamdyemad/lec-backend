@@ -45,6 +45,8 @@ class ProductController extends Controller
         $keyword = $request->keyword ?? '';
         $recently_views = $request->recently_views ?? false;
         $category_id = $request->category_id ?? '';
+        $from_price = $request->from_price ?? '';
+        $to_price = $request->to_price ?? '';
 
         $products = Product::with('specifications', 'versions', 'colors')->latest();
 
