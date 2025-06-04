@@ -1,44 +1,15 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
-use App\Http\Controllers\Api\ChatController;
-use App\Http\Controllers\Api\ClientProdutsController;
-use App\Http\Controllers\Api\ClientRatesController;
-use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\CountryController;
-use App\Http\Controllers\Api\Driver\DriverInvoiceController;
-use App\Http\Controllers\Api\Driver\DriverOrderController;
-use App\Http\Controllers\Api\Driver\DriverWithdrawlController;
-use App\Http\Controllers\Api\DriverController;
 use App\Http\Controllers\Api\FavoriteProductController;
 use App\Http\Controllers\Api\HomeController;
-use App\Http\Controllers\Api\IbanController;
 use App\Http\Controllers\Api\LanguageController;
-use App\Http\Controllers\Api\LogistiController;
-use App\Http\Controllers\Api\NotificationController;
-use App\Http\Controllers\Api\OrderController;
-use App\Http\Controllers\Api\PagesController;
-use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\Client\OrderController;
 use App\Http\Controllers\Api\ProductController;
-use App\Http\Controllers\Api\ProductsController;
-use App\Http\Controllers\Api\SectionController;
-use App\Http\Controllers\Api\SellerController;
-use App\Http\Controllers\Api\SellerCouponController;
-use App\Http\Controllers\Api\Seller\SellerOrdersController;
-use App\Http\Controllers\Api\Seller\SellerPickupsController;
-use App\Http\Controllers\Api\SellerProductController;
-use App\Http\Controllers\Api\SellerRatesController;
 use App\Http\Controllers\Api\SpecificationController;
-use App\Http\Controllers\Api\StatusController;
-use App\Http\Controllers\Api\SubCategoryController;
-use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\UserCouponsController;
-use App\Http\Controllers\Api\UserLocaotionsController;
-use App\Http\Controllers\Api\UserProductsController;
-use App\Http\Controllers\Api\WithdrawlsController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Api\UserCardController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -116,11 +87,6 @@ Route::group(['middleware' => 'translate'], function() {
             Route::delete('/{id}', [ProductController::class, 'delete'])->middleware('auth_type:admin');
         });
 
-        // Favorite Products
-        Route::group(['prefix' => 'favorite-products'], function() {
-            Route::get('/', [FavoriteProductController::class, 'index']);
-            Route::post('/', [FavoriteProductController::class, 'store']);
-        });
 
 
 

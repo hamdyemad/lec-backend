@@ -52,7 +52,9 @@ class User extends Authenticatable
         return $this->belongsTo(UserType::class, 'type');
     }
 
-
+    public function orders() {
+        return $this->hasMany(Order::class, 'client_id');
+    }
 
 
     public function locations() {
@@ -74,6 +76,9 @@ class User extends Authenticatable
     }
 
 
+    public function cards() {
+        return $this->hasMany(UserCard::class, 'user_id');
+    }
 
     public function roles() {
         return $this->belongsToMany(Role::class, 'users_roles', 'user_id')->withTimestamps();

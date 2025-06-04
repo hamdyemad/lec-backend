@@ -4,19 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Country;
+use App\Models\ShippingMethod;
 use App\Traits\Res;
 use Illuminate\Http\Request;
 
 class CountryController extends Controller
 {
     use Res;
-
-    public $shipping_methods = [
-        'air',
-        'sea',
-        'ground'
-    ];
-
 
     public function index(Request $request)
     {
@@ -44,10 +38,7 @@ class CountryController extends Controller
 
     public function shipping_methods(Request $request)
     {
-        $shipping_methods = $this->shipping_methods;
-        $shipping_methods = array_map(function ($method) {
-            return translate($method);
-        }, $shipping_methods);
+        $shipping_methods = ShippingMethod::latest()->get();
         return $this->sendRes(translate('shipping methods data'), true, $shipping_methods, [], 200);
     }
 

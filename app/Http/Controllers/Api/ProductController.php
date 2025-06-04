@@ -43,6 +43,7 @@ class ProductController extends Controller
             return $this->sendRes($message, false, [], $validator->errors(), 400);
         }
         $keyword = $request->keyword ?? '';
+        $per_page = $request->per_page ?? 12;
         $recently_views = $request->recently_views ?? false;
         $category_id = $request->category_id ?? '';
         $from_price = $request->from_price ?? '';
@@ -69,11 +70,7 @@ class ProductController extends Controller
             );
         }
 
-
-        $products = Product::with('specifications', 'versions', 'colors')->latest();
-        $per_page = $request->get('per_page', 12);
         $products = $products->paginate($per_page);
-
         return $this->sendRes(translate('products data'), true, $products);
     }
 

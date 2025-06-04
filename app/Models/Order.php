@@ -12,59 +12,37 @@ class Order extends Model
 
     protected $guarded = [];
 
-
-
-    public static function generateReference()
-    {
-        $lastOrder = self::latest('id')->first();
-        $nextNumber = $lastOrder ? intval(substr($lastOrder->reference, -4)) + 1 : 1;
-        return "SP_" . str_pad($nextNumber, 4, "0", STR_PAD_LEFT);
-    }
-
-
-
-
     public function user() {
         return $this->belongsTo(User::class, 'client_id');
     }
 
     public function client() {
-        return $this->belongsTo(User::class, 'client_id')->where('type', 1);
+        return $this->belongsTo(User::class, 'client_id');
     }
 
-    public function driver() {
-        return $this->belongsTo(User::class, 'driver_id')->where('type', 3);
+
+
+    public function delivery_location() {
+        return $this->belongsTo(Country::class, 'delivery_location_id');
     }
 
-    public function client_location() {
-        return $this->belongsTo(UserLocation::class, 'client_location_id');
+    public function shipping_method() {
+        return $this->belongsTo(ShippingMethod::class, 'shipping_method_id');
     }
+
 
     public function items() {
         return $this->hasMany(OrderItem::class, 'order_id');
     }
 
-    public function invoice() {
-        return $this->hasOne(Invoice::class, 'order_id');
-    }
 
     public function payments() {
         return $this->hasMany(Payment::class, 'order_id');
     }
 
-    public function chat() {
-        return $this->hasMany(Message::class, 'order_id');
-    }
 
     public function status() {
         return $this->belongsTo(Status::class, 'status_id');
-    }
-    public function pay_status() {
-        return $this->belongsTo(Status::class, 'pay_status_id');
-    }
-
-    public function pickups() {
-        return $this->hasMany(OrderPickup::class, 'order_id');
     }
 
 
