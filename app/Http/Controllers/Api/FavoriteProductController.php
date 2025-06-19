@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Api\Client;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\FavoriteProduct;
 use App\Models\Feature;
 use App\Models\FeatureType;
+use App\Models\Product;
 use App\Models\User;
 use App\Models\UserType;
 use App\Traits\FileUploads;
@@ -26,7 +27,15 @@ class FavoriteProductController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $favorite_products = $user->favorite_products()->with('product', 'product.specifications', 'product.colors', 'product.versions')->paginate(12);
+        $per_page = request('per_page') ?? 12;
+        $product_ids = $user->favorite_products()->pluck('product_id')->toArray();
+        $favorite_products = Product::whereIn('id', $product_ids)->with('specifications')->paginate($per_page);
+        $favorite_products->map(function ($product) use($user) {
+            $baseCurrency = \App\Models\Currency::where('base_currency', 1)->first();
+            ($baseCurrency) ? $product->base_currency = $baseCurrency->symbol : null;
+            $product->active = true;
+            return $product;
+        });
         return $this->sendRes(translate('favorite products data'), true, $favorite_products);
     }
 

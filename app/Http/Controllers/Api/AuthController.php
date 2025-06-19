@@ -82,7 +82,7 @@ class AuthController extends Controller
     {
 
         $user = auth()->user();
-        return $this->sendRes(translate('user data'), true, $user, [], 200);
+        return $this->sendRes(translate('profile data'), true, $user, [], 200);
 
     }
 
@@ -102,8 +102,7 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), $rules);
 
         if($validator->fails()) {
-            $message = implode('<br>', $validator->errors()->all());
-            return $this->sendRes($message, false, [], $validator->errors(), 400);
+            return $this->errorResponse($validator);
         }
 
         $user = DemoUser::create([
@@ -341,6 +340,35 @@ class AuthController extends Controller
             $str .= $chars[random_int(0, $max)];
         return $str;
     }
+
+
+    public function firebase_save_token(Request $request){
+
+        $auth = auth()->user();
+
+        $validator = Validator::make($request->all(), [
+            'token' => ['required', 'string'],
+        ]);
+        if($validator->fails()) {
+            $messages = implode('<br>', $validator->errors()->all());
+            return $this->sendRes($messages, false, [], $validator->errors(), 400);
+        }
+
+        if($auth->device_token) {
+            $auth->device_token->update([
+                'token' => $request->token
+            ]);
+        } else {
+            $auth->device_token()->create([
+                'token' => $request->token
+            ]);
+        }
+
+        return $this->sendRes(translate('your token has been saved'), true);
+
+
+    }
+
 
 
 }

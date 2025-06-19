@@ -46,4 +46,8 @@ class Order extends Model
     }
 
 
+    public function status_history() {
+        return $this->belongsToMany(Status::class, 'orders_status_history', 'order_id');
+    }
+
 }

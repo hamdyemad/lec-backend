@@ -49,8 +49,7 @@ class ClientController extends Controller
         $validator = Validator::make($request->all(), $rules);
 
         if($validator->fails()) {
-            $message = implode('<br>', $validator->errors()->all());
-            return $this->sendRes($message, false, [], $validator->errors(), 400);
+            return $this->errorResponse($validator);
         }
 
         $data = [

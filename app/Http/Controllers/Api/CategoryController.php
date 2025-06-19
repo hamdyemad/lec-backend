@@ -34,60 +34,6 @@ class CategoryController extends Controller
     }
 
 
-    public function form(Request $request, $category = null) {
-
-        $rules = [
-            'name' => ['required', 'string', 'max:255', Rule::unique('categories', 'name')->ignore($category ? $category->id : null)],
-            'image' => ['nullable', 'image', 'max:2048'],
-        ];
-
-        $validator = Validator::make($request->all(), $rules);
-        if($validator->fails()) {
-            $message = implode('<br>', $validator->errors()->all());
-            return $this->sendRes($message, false, [], $validator->errors(), 400);
-        }
-
-        $data = [
-            'name' => $request->name,
-        ];
-
-        if(isset($request->image)) {
-            if($category) {
-                (file_exists($category->image)) ? unlink($category->image) : '';
-            }
-            $image = $this->uploadFile($request, $this->categories_path, 'image');
-            $data['image'] = $image;
-        }
-
-        if($category) {
-            $message = translate('category updated successfully');
-            $category->update($data);
-        } else {
-            $message = translate('category added successfully');
-
-            $data['uuid'] = \Str::uuid();
-            $category = Category::create($data);
-        }
-
-        return $this->sendRes($message, true, $category);
-    }
-
-    public function store(Request $request)
-    {
-        return $this->form($request);
-    }
-
-    public function edit(Request $request, $uuid)
-    {
-        $category = Category::where('uuid', $uuid)->first();
-        if(!$category) {
-            return $this->sendRes(translate('cataegory not found'), false, [], [], 400);
-        }
-        return $this->form($request, $category);
-
-    }
-
-
     public function show(Request $request, $uuid) {
         $category = Category::where('uuid', $uuid)->first();
         if(!$category) {
@@ -95,18 +41,6 @@ class CategoryController extends Controller
         }
         return $this->sendRes(translate('cataegory found'), true, $category);
     }
-
-
-    public function delete(Request $request, $uuid) {
-        $category = Category::where('uuid', $uuid)->first();
-        if(!$category) {
-            return $this->sendRes(translate('cataegory not found'), false, [], [], 400);
-        }
-        (file_exists($category->image)) ? unlink($category->image) : '';
-        $category->delete();
-        return $this->sendRes(translate('cataegory deleted successfully'), true, [], [], 200);
-    }
-
 
 
 

@@ -23,6 +23,7 @@ class Translate
             return $this->sendRes(translate('language is not found please check the header (lang) is passed or not'), false, [], [], 400);
         }
         $request['lang'] = app()->getLocale();
+        $request['lang_id'] = $current_lang->id;
         return $next($request);
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\Client;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ApiKey;
@@ -94,8 +94,7 @@ class CardController extends Controller
         ];
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
-            $message = implode('<br>', $validator->errors()->all());
-            return $this->sendRes($message, false, [], $validator->errors(), 400);
+            return $this->errorResponse($validator);
         }
 
         $data = $request->only([
@@ -155,6 +154,6 @@ class CardController extends Controller
         }
 
         $card->delete();
-        return $this->sendRes(translate('card deleted successfully'), true, $card);
+        return $this->sendRes(translate('card deleted successfully'), true);
     }
 }

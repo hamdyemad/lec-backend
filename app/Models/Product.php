@@ -26,9 +26,15 @@ class Product extends Model
         return $this->hasMany(ProductVersion::class, 'product_id');
     }
 
+    public function warrantlies() {
+        return $this->hasMany(ProductWarrantly::class, 'product_id');
+    }
+
     public function specifications() {
         return $this->belongsToMany(Specification::class, 'products_specifications', 'product_id', 'specification_id');
     }
+
+
 
     public function recently_views() {
         return $this->belongsToMany(User::class, 'recently_views', 'product_id', 'user_id');
@@ -42,15 +48,6 @@ class Product extends Model
         return $this->hasMany(ProductAddon::class, 'product_id');
     }
 
-
-    public function items() {
-        return $this->hasMany(ProductItem::class, 'product_id');
-    }
-
-
-    public function full_price() {
-        return ($this->price - $this->discount);
-    }
 
 
 }

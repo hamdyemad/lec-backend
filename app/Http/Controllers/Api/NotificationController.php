@@ -15,6 +15,7 @@ use App\Traits\Res;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -22,79 +23,30 @@ class NotificationController extends Controller
 {
     use Res, FileUploads;
 
-    public $pushNotificationService;
-    public function __construct(PushNotificaion $pushNotificationService) {
-        $this->pushNotificationService = $pushNotificationService;
-    }
+    public function __construct() {}
 
-    public function sendNotification()
+    public function index(Request $request)
     {
-        $users = ['web-0481d9c6-e2ef-4c81-8a91-adaa132b676b', 'hello'];  // Array of user identifiers
-        $message = 'This is a push notification';
+        $auth = auth()->user();
+        $per_page = request('per_page') ?? 12;
+        $notifications = $auth->notifications()
+            ->latest()
+            ->paginate($per_page);
+        // Group the notifications by human-readable date
+        $grouped = $notifications->getCollection()->groupBy(function ($notification) {
+            $date = \Carbon\Carbon::parse($notification->created_at);
+            if ($date->isToday()) {
+                return translate('today');
+            } elseif ($date->isYesterday()) {
+                return translate('yesterday');
+            } else {
+                return $date->format('Y-m-d'); // Or ->format('F j, Y') for nicer display
+            }
+        });
 
-        $response = $this->pushNotificationService->sendPushNotification($users, $message);
+        // Replace the collection with grouped collection (optional depending on your usage)
+        $notifications->setCollection($grouped);
 
-        return response()->json($response);
+        return $this->sendRes(translate('all notifications'), true, $notifications);
     }
-
-    public function generateToken(Request $request)
-    {
-
-        $rules = [
-            'user_id' => ['required'],
-        ];
-
-        $validator = Validator::make($request->all(), $rules);
-        if($validator->fails()) {
-            $message = implode('<br>', $validator->errors()->all());
-            return $this->sendRes($message, false, [], $validator->errors(), 400);
-        }
-
-
-        $userID = $request->user()->id; // If you use a different auth system, do your checks here
-        $userIDInQueryParam = $request->user_id;
-
-        if ($userID != $userIDInQueryParam) {
-            return response('Inconsistent request', 401);
-        } else {
-            $beamsToken = $this->pushNotificationService->generateToken($userID);
-            return response()->json($beamsToken);
-        }
-
-        // $userID = $request->user()->id; // If you use a different auth system, do your checks here
-        // $userIDInQueryParam = $request->user_id;
-
-        // if ($userID != $userIDInQueryParam) {
-        //     return response('Inconsistent request', 401);
-        // } else {
-        //     $beamsToken = $this->pushNotificationService->generateToken($userID);
-        //     return response()->json($beamsToken);
-        // }
-
-
-    }
-
-
-
-    public function generatePusherTokenBeam($user_id)
-    {
-        $beamsToken = $this->pushNotificationService->generateToken($user_id);
-
-        return $beamsToken['token'];
-        // return response()->json($beamsToken);
-
-        // $userID = $request->user()->id; // If you use a different auth system, do your checks here
-        // $userIDInQueryParam = $request->user_id;
-
-        // if ($userID != $userIDInQueryParam) {
-        //     return response('Inconsistent request', 401);
-        // } else {
-        //     $beamsToken = $this->pushNotificationService->generateToken($userID);
-        //     return response()->json($beamsToken);
-        // }
-
-
-    }
-
-
 }

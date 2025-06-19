@@ -75,6 +75,10 @@ class User extends Authenticatable
         return $this->hasMany(FavoriteProduct::class, 'user_id');
     }
 
+    public function notifications() {
+        return $this->hasMany(Notification::class, 'user_id');
+    }
+
 
     public function cards() {
         return $this->hasMany(UserCard::class, 'user_id');
@@ -86,6 +90,11 @@ class User extends Authenticatable
 
     public function accounts() {
         return $this->hasMany(Account::class, 'user_id');
+    }
+
+
+    public function device_token() {
+        return $this->hasOne(DeviceToken::class, 'user_id');
     }
 
 

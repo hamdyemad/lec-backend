@@ -1,14 +1,18 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CardController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CountryController;
 use App\Http\Controllers\Api\FavoriteProductController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\LanguageController;
-use App\Http\Controllers\Api\Client\OrderController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\SpecificationController;
+use App\Http\Controllers\Api\SupportPageController;
 use App\Http\Controllers\Api\UserCardController;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +37,7 @@ Route::get('/login', function () {
 // Countries
 Route::get('/countries', [CountryController::class, 'index']);
 Route::get('/shipping-methods', [CountryController::class, 'shipping_methods']);
+Route::get('/payment-methods', [PaymentController::class, 'payment_methods']);
 
 
 
@@ -42,6 +47,9 @@ Route::group(['middleware' => 'translate'], function() {
 
         Route::post('/login', [AuthController::class, 'login']);
         Route::get('/profile', [AuthController::class, 'profile'])->middleware('auth:sanctum');
+
+        Route::post('/firebase-token', [AuthController::class, 'firebase_save_token'])->middleware('auth:sanctum');
+
 
         // Sign up
         Route::group(['prefix' => 'sign-up'], function() {
@@ -71,11 +79,8 @@ Route::group(['middleware' => 'translate'], function() {
         });
 
         // Languages
-        Route::group(['prefix' => 'languages'], function() {
-            Route::get('/', [LanguageController::class, 'index']);
-            Route::post('/', [LanguageController::class, 'update_translation'])->middleware('auth_type:admin');
-            Route::get('/{uuid}', [LanguageController::class, 'show']);
-        });
+        Route::get('/languages', [LanguageController::class, 'index']);
+
 
 
         // Products
@@ -88,22 +93,54 @@ Route::group(['middleware' => 'translate'], function() {
         });
 
 
+        // Orders
+        Route::group(['prefix' => 'orders'], function () {
+            Route::get('/', [OrderController::class, 'index']);
+            Route::post('/', [OrderController::class, 'store']);
+            Route::get('/{uuid}', [OrderController::class, 'show']);
+
+            Route::get('/{uuid}/status-history', [OrderController::class, 'status_history']);
+        });
+
+
+
+        // Cards
+        Route::group(['prefix' => 'cards'], function () {
+            Route::get('/', [CardController::class, 'index']);
+            Route::post('/', [CardController::class, 'store']);
+            Route::get('/{uuid}', [CardController::class, 'show']);
+            Route::put('/{uuid}', [CardController::class, 'edit']);
+            Route::delete('/{uuid}', [CardController::class, 'delete']);
+        });
+
+
+        // Favorite Products
+        Route::group(['prefix' => 'favorite-products'], function() {
+            Route::get('/', [FavoriteProductController::class, 'index']);
+            Route::post('/', [FavoriteProductController::class, 'store']);
+        });
 
 
         // specifications
         Route::group(['prefix' => 'specifications'], function() {
             Route::get('/', [SpecificationController::class, 'index']);
-            Route::post('/', [SpecificationController::class, 'store'])->middleware('auth_type:admin');
-            Route::get('/{uuid}', [SpecificationController::class, 'show']);
-            Route::post('/{uuid}', [SpecificationController::class, 'edit'])->middleware('auth_type:admin');
-            Route::delete('/{uuid}', [SpecificationController::class, 'delete'])->middleware('auth_type:admin');
         });
 
 
-        // Home Page
+
+
+
+
+        Route::get('/notifications', [NotificationController::class, 'index']);
+
         Route::get('/home', [HomeController::class, 'home']);
         Route::get('/recent-searches', [HomeController::class, 'recent_searches']);
         Route::delete('/recent-searches', [HomeController::class, 'remove_recent_searches']);
+
+
+
+        Route::get('/test', [NotificationController::class, 'index']);
+
 
 
     });

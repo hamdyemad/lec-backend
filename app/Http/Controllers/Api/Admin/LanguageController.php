@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\Translate;
@@ -39,6 +39,40 @@ class LanguageController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
+    public function update_translation(Request $request)
+    {
+        $rules = [
+            'key' => ['required', 'string', 'max:255'],
+            'value' => ['required', 'string', 'max:255'],
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
+        if($validator->fails()) {
+            return $this->errorResponse($validator);
+        }
+        $lang = $request->lang;
+        $language = Language::where('code', $lang)->first();
+        if($language) {
+            $translation = Translation::where([
+                'lang_id' => $language->id,
+                'lang_key' => $request->key
+            ])->first();
+            if($translation) {
+                $translation->lang_value = $request->value;
+                $translation->save();
+            } else {
+                $translation = Translation::create([
+                    'lang_id' => $language->id,
+                    'lang_key' => $request->key,
+                    'lang_value' => $request->value
+                ]);
+            }
+            return $this->sendRes(translate('translation success'), true, $translation, [], 200);
+        } else {
+            return $this->sendRes(translate('language not found'), false, [], [], 400);
+        }
+
+    }
 
     public function show(Request $request, $id) {
         $language = Language::find($id);
