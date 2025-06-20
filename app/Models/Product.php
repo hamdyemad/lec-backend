@@ -48,6 +48,32 @@ class Product extends Model
         return $this->hasMany(ProductAddon::class, 'product_id');
     }
 
+    public function translations()
+    {
+        return $this->hasMany(Translation::class, 'translatable_id')->where('translatable_model', self::class);
+    }
+
+    public function translate($key)
+    {
+        $language = Language::where('code', app()->getLocale())->first();
+        if($language) {
+            $translation = Translation::where([
+                'lang_key' =>  $key,
+                'lang_id' => $language->id,
+                'translatable_model' => self::class,
+                'translatable_id' => $this->id,
+                ])->first();
+            if($translation) {
+                return $translation->lang_value;
+            } else {
+                return '';
+            }
+        } else {
+            return $key;
+        }
+
+    }
+
 
 
 }
