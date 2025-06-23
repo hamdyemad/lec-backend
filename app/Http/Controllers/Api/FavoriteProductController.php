@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Mobile\ProductResource;
 use App\Models\FavoriteProduct;
 use App\Models\Feature;
 use App\Models\FeatureType;
@@ -28,14 +29,32 @@ class FavoriteProductController extends Controller
     {
         $user = auth()->user();
         $per_page = request('per_page') ?? 12;
+        $keyword = request('keyword') ?? '';
         $product_ids = $user->favorite_products()->pluck('product_id')->toArray();
-        $favorite_products = Product::whereIn('id', $product_ids)->with('specifications')->paginate($per_page);
-        $favorite_products->map(function ($product) use($user) {
-            $baseCurrency = \App\Models\Currency::where('base_currency', 1)->first();
-            ($baseCurrency) ? $product->base_currency = $baseCurrency->symbol : null;
-            $product->active = true;
-            return $product;
+        $favorite_products = Product::whereIn('id', $product_ids)
+        ->with('specifications', 'versions', 'addons', 'warrantlies', 'productColors', 'translationsRelations');
+
+
+        if ($keyword) {
+            $favorite_products = $favorite_products->whereHas('translationsRelations', function ($q) use ($keyword) {
+                $q->Where('lang_value', 'like', "%{$keyword}%")
+                ->where(function($query) use($keyword) {
+                    $query->where('lang_key', "title")
+                    ->orWhere('lang_key', 'content');
+                });
+            });
+            $user->recent_searches()->updateOrCreate(
+                ['keyword' => $keyword]
+            );
+        }
+
+        $favorite_products = $favorite_products->paginate($per_page);
+
+
+        $favorite_products->getCollection()->transform(function($product) {
+            return new ProductResource($product);
         });
+
         return $this->sendRes(translate('favorite products data'), true, $favorite_products);
     }
 

@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\SupportPageResource;
 use App\Models\ApiKey;
 use App\Models\Category;
 use App\Models\Feature;
 use App\Models\FeatureType;
 use App\Models\Product;
 use App\Models\SupportPage;
+use App\Models\Translation;
 use App\Models\User;
 use App\Models\UserType;
 use App\Traits\FileUploads;
@@ -44,7 +46,7 @@ class SupportPageController extends Controller
 
         $type = $request->type ?? '';
         $per_page = $request->per_page ?? 12;
-
+        $keyword = $request->keyword ?? '';
         $supportPages = SupportPage::latest();
 
 
@@ -52,7 +54,22 @@ class SupportPageController extends Controller
             $supportPages = $supportPages->where('type', $type);
         }
 
+        if ($keyword) {
+            $supportPages = $supportPages->whereHas('translationsRelations', function ($q) use ($keyword) {
+                $q->Where('lang_value', 'like', "%{$keyword}%")
+                ->where(function($query) use($keyword) {
+                    $query->where('lang_key', "header")
+                    ->orWhere('lang_key', 'body');
+                });
+            });
+        }
+
         $supportPages = $supportPages->paginate($per_page);
+
+        $supportPages->getCollection()->transform(function ($item) {
+            return new SupportPageResource($item);
+        });
+
 
         return $this->sendRes(translate('support pages data'), true, $supportPages);
     }
@@ -61,24 +78,32 @@ class SupportPageController extends Controller
     public function form(Request $request, $supportPage = null) {
 
         $rules = [
-            'type' => ['required', 'string', 'max:255', 'in:help_and_support,about'],
-            'header' => ['required', 'string', 'max:255'],
-            'body' => ['required', 'string', 'max:255'],
+            'translations' => ['required', 'array'],
+            'translations.*' => ['required', 'array'],
+            'type' => ['required',  'in:help_and_support,about'],
+            'translations.*.lang_id' => ['required', 'exists:languages,id'],
+            'translations.*.header' => ['required', 'string'],
+            'translations.*.body' => ['required', 'string'],
+
         ];
         $validator = Validator::make($request->all(), $rules);
         if($validator->fails()) {
             return $this->errorResponse($validator);
         }
 
+
         $data = [
             'type' => $request->type,
-            'header' => $request->header,
-            'body' => $request->body,
         ];
-
 
         if($supportPage) {
             $message = translate('support page updated successfully');
+
+            Translation::where([
+                'translatable_model' => SupportPage::class,   // ✅ fix: not "translatable_model"
+                'translatable_id'   => $supportPage->id,
+            ])->delete();
+
             $supportPage->update($data);
         } else {
             $message = translate('support page added successfully');
@@ -86,7 +111,22 @@ class SupportPageController extends Controller
             $supportPage = SupportPage::create($data);
         }
 
-        return $this->sendRes($message, true, $supportPage);
+        if($request->translations) {
+            foreach($request->translations as  $translation) {
+                foreach (['header', 'body'] as $key) {
+                    Translation::create([
+                        'translatable_model' => SupportPage::class,   // ✅ fix: not "translatable_model"
+                        'translatable_id'   => $supportPage->id,
+                        'lang_id'           => $translation['lang_id'],
+                        'lang_key'               => $key,
+                        'lang_value'             => $translation[$key],
+                    ]);
+                }
+            }
+        }
+
+
+        return $this->sendRes($message, true);
     }
 
     public function store(Request $request)
@@ -110,6 +150,16 @@ class SupportPageController extends Controller
         if(!$supportPage) {
             return $this->sendRes(translate('support page not found'), false, [], [], 400);
         }
+
+        $supportPage = [
+            "id" => $supportPage->id,
+            "uuid" => $supportPage->uuid,
+            "header" => $supportPage->translations('header'),
+            "body" => $supportPage->translations('body'),
+            "image" => $supportPage->image,
+            "created_at" => $supportPage->created_at,
+        ];
+
 
         return $this->sendRes(translate('support page found'), true, $supportPage);
     }

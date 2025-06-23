@@ -7,6 +7,7 @@ use App\Models\ApiKey;
 use App\Models\Category;
 use App\Models\Feature;
 use App\Models\FeatureType;
+use App\Models\Translation;
 use App\Models\User;
 use App\Models\UserType;
 use App\Traits\FileUploads;
@@ -15,6 +16,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use App\Http\Resources\CategoryResource;
+
 
 class CategoryController extends Controller
 {
@@ -26,9 +29,23 @@ class CategoryController extends Controller
      */
     public function index(Request $request)
     {
-        $categories = Category::latest();
+        $categories = Category::with('translationsRelations')->latest();
         $per_page = $request->get('per_page', 12);
+        $keyword = $request->keyword ?? '';
+
+        if($keyword) {
+            $categories = $categories->whereHas('translationsRelations', function ($q) use ($keyword) {
+                $q->Where('lang_value', 'like', "%{$keyword}%")
+                ->where(function($query) {
+                    $query->where('lang_key', "name");
+                });
+            });
+        }
         $categories = $categories->paginate($per_page);
+
+        $categories->getCollection()->transform(function ($item) {
+            return new CategoryResource($item);
+        });
 
         return $this->sendRes('all categories', true, $categories);
     }
@@ -37,7 +54,10 @@ class CategoryController extends Controller
     public function form(Request $request, $category = null) {
 
         $rules = [
-            'name' => ['required', 'string', 'max:255', Rule::unique('categories', 'name')->ignore($category ? $category->id : null)],
+            'translations' => ['required', 'array'],
+            'translations.*' => ['required', 'array'],
+            'translations.*.lang_id' => ['required', 'exists:languages,id'],
+            'translations.*.name' => ['required', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'max:2048'],
         ];
 
@@ -60,15 +80,36 @@ class CategoryController extends Controller
 
         if($category) {
             $message = translate('category updated successfully');
+
+            // Remove Old Translations
+            Translation::where([
+                'translatable_model' => Category::class,   // ✅ fix: not "translatable_model"
+                'translatable_id'   => $category->id,
+            ])->delete();
             $category->update($data);
         } else {
             $message = translate('category added successfully');
-
             $data['uuid'] = \Str::uuid();
             $category = Category::create($data);
         }
 
-        return $this->sendRes($message, true, $category);
+
+        // Translations
+        if($request->translations) {
+            foreach($request->translations as  $translation) {
+                foreach (['name'] as $key) {
+                    Translation::create([
+                        'translatable_model' => Category::class,   // ✅ fix: not "translatable_model"
+                        'translatable_id'   => $category->id,
+                        'lang_id'           => $translation['lang_id'],
+                        'lang_key'               => $key,
+                        'lang_value'             => $translation[$key],
+                    ]);
+                }
+            }
+        }
+
+        return $this->sendRes($message, true);
     }
 
     public function store(Request $request)
@@ -92,7 +133,17 @@ class CategoryController extends Controller
         if(!$category) {
             return $this->sendRes(translate('cataegory not found'), false, [], [], 400);
         }
+        $category =  [
+            "id" => $category->id,
+            "uuid" => $category->uuid,
+            "name" => $category->translations('name'),
+            "image" => $category->image,
+            "created_at" => $category->created_at,
+        ];
+
         return $this->sendRes(translate('cataegory found'), true, $category);
+
+
     }
 
 

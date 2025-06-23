@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\SpecificationResource;
 use App\Models\ApiKey;
 use App\Models\Category;
 use App\Models\Feature;
 use App\Models\FeatureType;
 use App\Models\Specification;
+use App\Models\Translation;
 use App\Models\User;
 use App\Models\UserType;
 use App\Traits\FileUploads;
@@ -16,6 +18,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use App\Http\Resources\CategoryResource;
+
 
 class SpecificationController extends Controller
 {
@@ -29,7 +33,23 @@ class SpecificationController extends Controller
     {
         $specifications = Specification::latest();
         $per_page = $request->get('per_page', 12);
+        $keyword = $request->keyword ?? '';
+
+        if($keyword) {
+            $specifications = $specifications->whereHas('translationsRelations', function ($q) use ($keyword) {
+                $q->Where('lang_value', 'like', "%{$keyword}%")
+                ->where(function($query) {
+                    $query->where('lang_key', "header")
+                    ->orWhere('lang_key', "bodyu");
+                });
+            });
+        }
+
         $specifications = $specifications->paginate($per_page);
+        $specifications->getCollection()->transform(function ($item) {
+            return new SpecificationResource($item);
+        });
+
 
         return $this->sendRes('all specifications', true, $specifications);
     }
@@ -38,8 +58,11 @@ class SpecificationController extends Controller
     public function form(Request $request, $specification = null) {
 
         $rules = [
-            'header' => ['required', 'string', 'max:255'],
-            'body' => ['required', 'string', 'max:255'],
+            'translations' => ['required', 'array'],
+            'translations.*' => ['required', 'array'],
+            'translations.*.lang_id' => ['required', 'exists:languages,id'],
+            'translations.*.header' => ['required', 'string', 'max:255'],
+            'translations.*.body' => ['required', 'string'],
             'image' => ['nullable', 'image', 'max:2048'],
         ];
 
@@ -48,10 +71,8 @@ class SpecificationController extends Controller
             return $this->errorResponse($validator);
         }
 
-        $data = [
-            'header' => $request->header,
-            'body' => $request->body,
-        ];
+
+
 
         if(isset($request->image)) {
             if($specification) {
@@ -63,13 +84,36 @@ class SpecificationController extends Controller
 
         if($specification) {
             $message = translate('specification updated successfully');
+
+            // Remove Old Translations
+            Translation::where([
+                'translatable_model' => Specification::class,   // ✅ fix: not "translatable_model"
+                'translatable_id'   => $specification->id,
+            ])->delete();
+
             $specification->update($data);
         } else {
             $message = translate('specification added successfully');
-
             $data['uuid'] = \Str::uuid();
             $specification = specification::create($data);
         }
+
+        // Translations
+        if($request->translations) {
+            foreach($request->translations as  $translation) {
+                foreach (['header', 'body'] as $key) {
+                    Translation::create([
+                        'translatable_model' => Specification::class,   // ✅ fix: not "translatable_model"
+                        'translatable_id'   => $specification->id,
+                        'lang_id'           => $translation['lang_id'],
+                        'lang_key'               => $key,
+                        'lang_value'             => $translation[$key],
+                    ]);
+                }
+            }
+        }
+
+
 
         return $this->sendRes($message, true, $specification);
     }
@@ -95,6 +139,14 @@ class SpecificationController extends Controller
         if(!$specification) {
             return $this->sendRes(translate('specification not found'), false, [], [], 400);
         }
+        $specification = [
+            "id" => $specification->id,
+            "uuid" => $specification->uuid,
+            "header" => $specification->translations('header'),
+            "body" => $specification->translations('body'),
+            "image" => $specification->image,
+            "created_at" => $specification->created_at,
+        ];
         return $this->sendRes(translate('specification found'), true, $specification);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\SpecificationResource;
 use App\Models\ApiKey;
 use App\Models\Category;
 use App\Models\Feature;
@@ -29,9 +30,23 @@ class SpecificationController extends Controller
     {
         $specifications = Specification::latest();
         $per_page = $request->get('per_page', 12);
-        $specifications = $specifications->paginate($per_page);
+        $keyword = $request->keyword ?? '';
 
-        return $this->sendRes('all specifications', true, $specifications);
+        $specifications = $specifications->latest();
+        if($keyword) {
+            $specifications = $specifications->whereHas('translationsRelations', function ($q) use ($keyword) {
+                $q->Where('lang_value', 'like', "%{$keyword}%")
+                ->where(function($query) {
+                    $query->where('lang_key', "header")
+                    ->orWhere('lang_key', "body");
+                });
+            });
+        }
+        $specifications = $specifications->paginate($per_page);
+        $specifications->getCollection()->transform(function($specification) {
+            return new SpecificationResource($specification);
+        });
+        return $this->sendRes(translate('all specifications'), true, $specifications);
     }
 
 }

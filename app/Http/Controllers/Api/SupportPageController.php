@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\SupportPageResource;
 use App\Models\ApiKey;
 use App\Models\Category;
 use App\Models\Feature;
@@ -40,11 +41,11 @@ class SupportPageController extends Controller
             $message = implode('<br>', $validator->errors()->all());
             return $this->sendRes($message, false, [], $validator->errors(), 400);
         }
-
         $per_page = $request->per_page ?? 12;
-
         $supportPages = SupportPage::latest();
-
+        $supportPages->getCollection()->transform(function ($item) {
+            return new SupportPageResource($item);
+        });
 
         $supportPages = $supportPages->paginate($per_page);
 

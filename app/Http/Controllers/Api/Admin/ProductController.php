@@ -3,13 +3,19 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductColorResource;
 use App\Http\Resources\ProductResource;
+use App\Http\Resources\Product\ProductShowResource;
 use App\Models\ApiKey;
 use App\Models\Category;
 use App\Models\Feature;
 use App\Models\FeatureType;
 use App\Models\Language;
 use App\Models\Product;
+use App\Models\ProductAddon;
+use App\Models\ProductColor;
+use App\Models\ProductVersion;
+use App\Models\ProductWarrantly;
 use App\Models\Translation;
 use App\Models\User;
 use App\Models\UserType;
@@ -52,7 +58,8 @@ class ProductController extends Controller
         $from_price = $request->from_price ?? '';
         $to_price = $request->to_price ?? '';
 
-        $products = Product::with('specifications', 'versions', 'colors')->latest();
+
+        $products = Product::with('translationsRelations');
 
         if ($recently_views) {
             $products = $products->whereHas('recently_views', function ($query) use ($authUser) {
@@ -63,15 +70,20 @@ class ProductController extends Controller
         if ($category_id) {
             $products = $products->where('category_id', $category_id);
         }
-        if ($keyword) {
-            $products = $products
-                ->where('title', 'like', "%$keyword%")
-                ->orWhere('content', 'like', "%$keyword%");
 
+        if ($keyword) {
+            $products = $products->whereHas('translationsRelations', function ($q) use ($keyword) {
+                $q->Where('lang_value', 'like', "%{$keyword}%")
+                ->where(function($query) use($keyword) {
+                    $query->where('lang_key', "title")
+                    ->orWhere('lang_key', 'content');
+                });
+            });
             $authUser->recent_searches()->updateOrCreate(
                 ['keyword' => $keyword]
             );
         }
+
 
         if ($from_price) {
             $products = $products->where('price', '>=', $from_price);
@@ -80,15 +92,13 @@ class ProductController extends Controller
             $products = $products->where('price', '<=', $to_price);
         }
 
-        $products = $products->paginate($per_page);
+        $products = $products->latest()->paginate($per_page);
 
-        $products->map(function ($product) {
-            $baseCurrency = \App\Models\Currency::where('base_currency', 1)->first();
-            ($baseCurrency) ? $product->base_currency = $baseCurrency->symbol : null;
-            $product->title = $product->translate('title');
-            $product->content = $product->translate('content');
-            return $product;
+        $products->load('specifications', 'versions', 'productColors');
+        $products->getCollection()->transform(function ($item) {
+            return new ProductResource($item);
         });
+
 
         return $this->sendRes(translate('products data'), true, $products);
     }
@@ -102,7 +112,7 @@ class ProductController extends Controller
             // Product Translations
             'translations' => ['required', 'array'],
             'translations.*' => ['required', 'array'],
-            'translations.*.lang' => ['required', 'exists:languages,id'],
+            'translations.*.lang_id' => ['required', 'exists:languages,id'],
             'translations.*.title' => ['required', 'string', 'max:255'],
             'translations.*.content' => ['required', 'string'],
 
@@ -111,7 +121,7 @@ class ProductController extends Controller
 
             // Colors
             'colors' => ['required', 'array'],
-            'colors.*.lang' => ['required', 'string', 'max:255'],
+            'colors.*.lang_id' => ['required', 'exists:languages,id'],
             'colors.*.name' => ['required', 'string', 'max:255'],
             'colors.*.value' => ['required', 'string', 'max:255'],
             // Images
@@ -128,17 +138,20 @@ class ProductController extends Controller
 
             // Warrantly
             'warrantly' => ['nullable', 'array'],
-            'warrantly.*.type' => ['required_with:warrantly.*.title', 'string', 'max:255', 'in:km,battery'],
-            'warrantly.*.title' => ['required_with:warrantly.*.type', 'string', 'max:255'],
+            'warrantly.*.lang_id' => ['required_with:warrantly', 'exists:languages,id'],
+            'warrantly.*.type' => ['required_with:warrantly', 'string', 'max:255', 'in:km,battery'],
+            'warrantly.*.title' => ['required_with:warrantly', 'string', 'max:255'],
 
             // Versions
             'versions' => ['required', 'array'],
+            'versions.*.lang_id' => ['required', 'exists:languages,id'],
             'versions.*.name' => ['required', 'string', 'max:255'],
             'versions.*.price' => ['required', 'numeric'],
             // Addons
             'addons' => ['nullable', 'array'],
-            'addons.*.name' => ['nullable', 'string', 'max:255'],
-            'addons.*.price' => ['nullable', 'numeric'],
+            'addons.*.lang_id' => ['required_with:addons', 'exists:languages,id'],
+            'addons.*.name' => ['required_with:addons', 'string', 'max:255'],
+            'addons.*.price' => ['required_with:addons', 'numeric'],
 
         ];
         $validator = Validator::make($request->all(), $rules);
@@ -198,12 +211,49 @@ class ProductController extends Controller
         if ($product) {
             $message = translate('product updated successfully');
             $product->specifications()->detach(); // Detach old specifications
-            $product->versions()->delete(); // Delete old versions
+
+            // Start Remove Translations
+            if($product->versions()->count() > 0) {
+                foreach($product->versions as $version) {
+                    Translation::where([
+                        'translatable_model' => ProductVersion::class,
+                        'translatable_id'   => $version->id,
+                    ])->delete();
+                }
+            }
+            if($product->productColors()->count() > 0) {
+                foreach($product->productColors as $color) {
+                    Translation::where([
+                        'translatable_model' => ProductColor::class,
+                        'translatable_id'   => $color->id,
+                    ])->delete();
+                }
+            }
+            if($product->addons()->count() > 0) {
+                foreach($product->addons as $addon) {
+                    Translation::where([
+                        'translatable_model' => ProductAddon::class,
+                        'translatable_id'   => $addon->id,
+                    ])->delete();
+                }
+            }
+            if($product->warrantlies()->count() > 0) {
+                foreach($product->warrantlies as $warrantly) {
+                    Translation::where([
+                        'translatable_model' => ProductWarrantly::class,
+                        'translatable_id'   => $warrantly->id,
+                    ])->delete();
+                }
+            }
+            Translation::where([
+                'translatable_model' => Product::class,
+                'translatable_id'   => $product->id,
+            ])->delete();
+            // End Remove Translations
+            $product->versions()->delete();
             $product->colors()->delete();
             $product->addons()->delete();
             $product->warrantlies()->delete();
-
-
             $product->update($data);
         } else {
             $message = translate('product addedd successfully');
@@ -213,9 +263,15 @@ class ProductController extends Controller
 
         if ($request->versions) {
             foreach ($request->versions as $version) {
-                $product->versions()->create([
-                    'name' => $version['name'],
+                $versionModel = $product->versions()->create([
                     'price' => $version['price'],
+                ]);
+                Translation::create([
+                    'translatable_model' => ProductVersion::class,
+                    'translatable_id'   => $versionModel->id,
+                    'lang_id'           => $version['lang_id'],
+                    'lang_key'          => 'name',
+                    'lang_value'        => $version['name'],
                 ]);
             }
         }
@@ -226,28 +282,47 @@ class ProductController extends Controller
 
         if ($request->colors) {
             foreach ($request->colors as $color) {
-                $product->colors()->create([
-                    'name' => $color['name'],
+                $colorModel = $product->colors()->create([
                     'value' => $color['value'],
                 ]);
+                Translation::create([
+                    'translatable_model' => ProductColor::class,
+                    'translatable_id'   => $colorModel->id,
+                    'lang_id'           => $color['lang_id'],
+                    'lang_key'          => 'name',
+                    'lang_value'        => $color['name'],
+                ]);
+
             }
         }
 
 
         if ($request->addons) {
             foreach ($request->addons as $addon) {
-                $product->addons()->create([
-                    'name' => $addon['name'],
+                $addonModel = $product->addons()->create([
                     'price' => $addon['price'],
+                ]);
+                Translation::create([
+                    'translatable_model' => ProductAddon::class,
+                    'translatable_id'   => $addonModel->id,
+                    'lang_id'           => $addon['lang_id'],
+                    'lang_key'          => 'name',
+                    'lang_value'        => $color['name'],
                 ]);
             }
         }
 
         if ($request->warrantly) {
             foreach ($request->warrantly as $warrantly) {
-                $product->warrantlies()->create([
+                $warrantlyModel = $product->warrantlies()->create([
                     'type' => $warrantly['type'],
-                    'title' => $warrantly['title'],
+                ]);
+                Translation::create([
+                    'translatable_model' => ProductWarrantly::class,
+                    'translatable_id'   => $warrantlyModel->id,
+                    'lang_id'           => $warrantly['lang_id'],
+                    'lang_key'          => 'title',
+                    'lang_value'        => $warrantly['title'],
                 ]);
             }
         }
@@ -260,7 +335,7 @@ class ProductController extends Controller
                     Translation::create([
                         'translatable_model' => Product::class,   // ✅ fix: not "translatable_model"
                         'translatable_id'   => $product->id,
-                        'lang_id'           => $translation['lang'],
+                        'lang_id'           => $translation['lang_id'],
                         'lang_key'               => $key,
                         'lang_value'             => $translation[$key],
                     ]);
@@ -269,7 +344,7 @@ class ProductController extends Controller
         }
 
 
-        return $this->sendRes($message, true, $product);
+        return $this->sendRes($message, true);
     }
 
     public function store(Request $request)
@@ -289,26 +364,17 @@ class ProductController extends Controller
 
     public function show(Request $request, $uuid)
     {
-        $product = Product::with('colors')->where('uuid', $uuid)->first();
+        $product = Product::with('productColors', 'versions', 'addons', 'warrantlies')->where('uuid', $uuid)->first();
 
         if (!$product) {
             return $this->sendRes(translate('product not found'), false, [], [], 400);
         }
 
-        // Set base currency
-        $baseCurrency = \App\Models\Currency::where('base_currency', 1)->first();
-        if ($baseCurrency) {
-            $product->base_currency = $baseCurrency->symbol;
-        }
-
         // Add to recently viewed
         $product->recently_views()->sync(auth()->id());
 
-        $translations = Language::with(['translations' => function ($q) {
-            $q->where('translatable_model', Product::class);
-        }])->get();
-        $product->translations = $translations;
 
+        $product = new ProductShowResource($product);
 
         return $this->sendRes(translate('product found'), true, $product);
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Mobile\ProductResource;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\FeatureType;
@@ -43,55 +44,62 @@ class HomeController extends Controller
         }
 
 
-        $keyword = $request->keyword;
+        $keyword = $request->keyword ?? '';
         $per_page = $request->per_page ?? 12;
 
-        $baseCurrency = Currency::where('base_currency', 1)->first();
 
-        $categories = Category::latest();
-        if($keyword) {
-            $categories = $categories
-            ->where('name', 'like', "%$keyword%");
-        }
+        // Category
+        $categories = Category::with('translationsRelations')->latest();
         $categories = $categories->paginate($per_page, ['*'], 'categories_page');
 
         // Products
-        $products = Product::with('specifications', 'versions')->latest();
-
-
-        if($keyword) {
-            $products = $products
-            ->where('title', 'like', "%$keyword%")
-            ->orWhere('content', 'like', "%$keyword%");
-        }
+        $products = Product::with('specifications', 'versions', 'addons',
+        'warrantlies', 'productColors', 'translationsRelations')->latest();
 
         $products = $products->paginate($per_page, ['*'], 'products_page');
-        $products->map(function ($product) use($baseCurrency, $auth) {
-            ($baseCurrency) ? $product->base_currency = $baseCurrency->symbol : null;
-
-            // Active Product To User
-            (in_array($product->id,$auth->favorite_products()->pluck('product_id')->toArray())) ? $active = true : $active = false;
-            $product->active = $active;
-            return $product;
+        $products->getCollection()->transform(function ($product) {
+            return new ProductResource($product);
         });
 
         // Recently Products
-        $recently_views_products = Product::with(['specifications', 'versions'])
+        $recently_views_products = Product::with('specifications', 'versions', 'addons',
+        'warrantlies', 'productColors', 'translationsRelations')
         ->whereHas('recently_views', function($query) use ($auth) {
                 $query->where('user_id', $auth->id);
         })->latest();
-        if($keyword) {
-            $recently_views_products = $recently_views_products
-            ->where('title', 'like', "%$keyword%")
-            ->orWhere('content', 'like', "%$keyword%");
+
+
+        if ($keyword) {
+            $products = $products->whereHas('translationsRelations', function ($q) use ($keyword) {
+                $q->Where('lang_value', 'like', "%{$keyword}%")
+                ->where(function($query) use($keyword) {
+                    $query->where('lang_key', "title")
+                    ->orWhere('lang_key', 'content');
+                });
+            });
+            $recently_views_products = $recently_views_products->whereHas('translationsRelations', function ($q) use ($keyword) {
+                $q->Where('lang_value', 'like', "%{$keyword}%")
+                ->where(function($query) use($keyword) {
+                    $query->where('lang_key', "title")
+                    ->orWhere('lang_key', 'content');
+                });
+            });
+
+            $categories = $categories->whereHas('translationsRelations', function ($q) use ($keyword) {
+                $q->Where('lang_value', 'like', "%{$keyword}%")
+                ->where(function($query) {
+                    $query->where('lang_key', "name");
+                });
+            });
+
+            $auth->recent_searches()->updateOrCreate(
+                ['keyword' => $keyword]
+            );
         }
+
         $recently_views_products = $recently_views_products->paginate($per_page, ['*'], 'recently_views_products_page');
-        $recently_views_products->map(function ($product)  use($baseCurrency, $auth)  {
-            ($baseCurrency) ? $product->base_currency = $baseCurrency->symbol : null;
-            // Active Product To User
-            (in_array($product->id,$auth->favorite_products()->pluck('product_id')->toArray())) ? $active = true : $active = false;
-            $product->active = $active;
-            return $product;
+        $recently_views_products->getCollection()->transform(function ($product) {
+            return new ProductResource($product);
         });
 
         $data = [
@@ -99,8 +107,6 @@ class HomeController extends Controller
             'products' => $products,
             'recently_views_products' => $recently_views_products,
         ];
-
-
         $message = translate('home page data');
         return $this->sendRes($message, true, $data);
 

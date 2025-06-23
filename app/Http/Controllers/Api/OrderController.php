@@ -6,6 +6,7 @@ use App\Events\OrderCreationEvent;
 use App\Events\OrderFindEvent;
 use App\Events\SendMessage;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Mobile\OrderResource;
 use App\Models\ApiKey;
 use App\Models\Cart;
 use App\Models\Currency;
@@ -59,6 +60,7 @@ class OrderController extends Controller
         $rules = [
             'per_page' => ['nullable', 'integer', 'min:1'],
             'keyword' => ['nullable', 'string', 'max:255'],
+            'type' => ['nullable', 'string', 'in:booked,history'],
         ];
 
         $validator = Validator::make($request->all(), $rules);
@@ -67,16 +69,27 @@ class OrderController extends Controller
             return $this->sendRes($message, false, [], $validator->errors(), 400);
         }
 
+        $type = $request->type ?? '';
         $per_page = $request->per_page ? $request->per_page : 10;
 
-        $orders = $auth->orders()->with(['items.product.specifications', 'items.product.colors', 'status', 'delivery_location', 'shipping_method'])->orderBy('created_at', 'desc');
+        $orders = $auth->orders()->with('status', 'items.product.specifications')->orderBy('created_at', 'desc');
 
+
+        if($type) {
+            if($type == 'booked') {
+                $orders = $orders->whereHas('status', function($status) {
+                    $status->where('type', 'processing');
+                });
+            } else {
+                $orders = $orders->whereHas('status', function($status) {
+                    $status->where('type', 'finished');
+                });
+            }
+        }
         $orders = $orders->paginate($per_page);
 
         $orders->getCollection()->transform(function ($order) {
-            $baseCurrency = Currency::where('base_currency', 1)->first();
-            ($baseCurrency) ? $order->base_currency = $baseCurrency->symbol : null;
-            return $order;
+            return new OrderResource($order);
         });
 
         return $this->sendRes(translate('orders list'), true, $orders);

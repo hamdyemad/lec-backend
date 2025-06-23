@@ -78,14 +78,40 @@ class AuthController extends Controller
 
     }
 
+    // Profiles
     public function profile(Request $request)
     {
 
         $user = auth()->user();
         return $this->sendRes(translate('profile data'), true, $user, [], 200);
-
     }
 
+    public function update_profile(Request $request) {
+
+        $auth = auth()->user();
+        $rules = [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'string', 'max:255', Rule::unique('rc_users', 'email')->ignore($auth->id)],
+            'mobile_code' => ['required', 'string', 'exists:countries,call_key'],
+            'mobile' => ['required', 'string', Rule::unique('rc_users', 'mobile')->ignore($auth->id)]
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
+
+        if($validator->fails()) {
+            return $this->errorResponse($validator);
+        }
+
+        $auth->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'mobile_code' => $request->mobile_code,
+            'mobile' => $request->mobile,
+        ]);
+        if($auth) {
+            return $this->sendRes(translate('profile updated'), true);
+        }
+    }
 
 
 

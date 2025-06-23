@@ -47,6 +47,7 @@ Route::group(['middleware' => 'translate'], function() {
 
         Route::post('/login', [AuthController::class, 'login']);
         Route::get('/profile', [AuthController::class, 'profile'])->middleware('auth:sanctum');
+        Route::post('/profile', [AuthController::class, 'update_profile'])->middleware('auth:sanctum');
 
         Route::post('/firebase-token', [AuthController::class, 'firebase_save_token'])->middleware('auth:sanctum');
 

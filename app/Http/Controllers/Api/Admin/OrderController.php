@@ -89,7 +89,7 @@ class OrderController extends Controller
             return $this->sendRes(translate('order not found'), false, [], [], 400);
         }
         $rules = [
-            'status' => ['required'],
+            'status' => ['required', 'exists:tb_status,id'],
         ];
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
@@ -111,7 +111,6 @@ class OrderController extends Controller
 
             }
         }
-
         $order->status_history()->attach($request->status);
         $order->update([
             'status_id' => $request->status
@@ -126,7 +125,7 @@ class OrderController extends Controller
             ]);
         // End Send Notifications
 
-        return $this->sendRes($message, true, $order);
+        return $this->sendRes($message, true);
     }
 
 
