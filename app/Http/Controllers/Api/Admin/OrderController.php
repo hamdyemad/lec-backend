@@ -48,12 +48,25 @@ class OrderController extends Controller
 
         $per_page = $request->per_page ? $request->per_page : 12;
 
-        $orders = Order::with(['items.product.specifications', 'items.product.colors', 'status', 'delivery_location', 'shipping_method'])->latest();
+        $orders = Order::with(['items.product.specifications', 'items.product.productColors', 'status', 'delivery_location', 'shipping_method'])->latest();
         $orders = $orders->paginate($per_page);
 
         $orders->getCollection()->transform(function ($order) {
             $baseCurrency = Currency::where('base_currency', 1)->first();
             ($baseCurrency) ? $order->base_currency = $baseCurrency->symbol : null;
+            foreach($order->items as $item) {
+                $item->product->title = $item->product->translate('title');
+                $item->product->content = $item->product->translate('content');
+                $item->product->colors = $item->product->productColors;
+                unset($item->product->productColors);
+                foreach($item->product->specifications as $specification) {
+                    $specification->header = $specification->translate('header');
+                    $specification->body = $specification->translate('body');
+                }
+                foreach($item->product->colors as $color) {
+                    $color->name = $color->translate('name');
+                }
+            }
             return $order;
         });
 
@@ -65,7 +78,8 @@ class OrderController extends Controller
 
     public function show(Request $request, $uuid)
     {
-        $order = Order::where('uuid', $uuid)->first();
+        $order = Order::with(['items.product.specifications', 'items.product.productColors', 'status',
+        'delivery_location', 'shipping_method'])->where('uuid', $uuid)->first();
         if (!$order) {
             return $this->sendRes(translate('order not found'), false, [], [], 400);
         }
@@ -73,7 +87,24 @@ class OrderController extends Controller
         $status_history = $order->status_history()->latest()->paginate($per_page);
 
 
-        $order->load(['items.product.specifications', 'status', 'delivery_location', 'shipping_method']);
+
+        $baseCurrency = Currency::where('base_currency', 1)->first();
+        ($baseCurrency) ? $order->base_currency = $baseCurrency->symbol : null;
+        foreach($order->items as $item) {
+            $item->product->title = $item->product->translate('title');
+            $item->product->content = $item->product->translate('content');
+            $item->product->colors = $item->product->productColors;
+            unset($item->product->productColors);
+            foreach($item->product->specifications as $specification) {
+                $specification->header = $specification->translate('header');
+                $specification->body = $specification->translate('body');
+            }
+            foreach($item->product->colors as $color) {
+                $color->name = $color->translate('name');
+            }
+        }
+
+
         $data = [
             'order' => $order,
             'status_history' => $status_history

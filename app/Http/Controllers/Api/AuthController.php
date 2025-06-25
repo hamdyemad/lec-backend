@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ResetPassword;
+use App\Mail\ResetPasswordMail;
+use App\Mail\VerifyAuth;
+use App\Mail\VerifyAuthMail;
 use App\Models\DemoUser;
 use App\Models\User;
 use App\Service\WatsappService;
@@ -12,6 +16,7 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -32,8 +37,7 @@ class AuthController extends Controller
     {
 
         $rules = [
-            'mobile_code' => ['required', 'string'],
-            'mobile' => ['required', 'string'],
+            'email' => ['required', 'exists:rc_users,email'],
             'password' => ['required', 'string'],
         ];
 
@@ -44,8 +48,7 @@ class AuthController extends Controller
         }
 
         $user = User::where([
-            'mobile' => $request->mobile,
-            'mobile_code' => $request->mobile_code,
+            'email' => $request->email,
             'status' => 1
         ])->first();
         if($user) {
@@ -121,7 +124,8 @@ class AuthController extends Controller
 
         $rules = [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'string', 'max:255'],
+            'mobile_code' => ['required', 'string', 'exists:countries,call_key'],
+            'mobile' => ['required', 'string'],
             'password' => ['required', 'string','min:8', 'confirmed'],
         ];
 
@@ -134,7 +138,8 @@ class AuthController extends Controller
         $user = DemoUser::create([
             'uuid' => Str::uuid(),
             'name' => $request->name,
-            'email' => $request->email,
+            'mobile_code' => $request->mobile_code,
+            'mobile' => $request->mobile,
             'password' => Hash::make($request->password),
         ]);
         if($user) {
@@ -150,8 +155,7 @@ class AuthController extends Controller
 
         $rules = [
             'uuid' => ['required', 'exists:demo_users,uuid'],
-            'mobile_code' => ['required', 'string', 'exists:countries,call_key'],
-            'mobile' => ['required', 'string']
+            'email' => ['required', 'email', 'unique:rc_users,email', 'string', 'max:255'],
         ];
 
         $validator = Validator::make($request->all(), $rules);
@@ -168,16 +172,18 @@ class AuthController extends Controller
         if($demo_user) {
             $demo_user->update([
                 'code' => Hash::make($code),
-                'last_code' => Carbon::now()->addMinutes(10),
-                'mobile_code' => $request->mobile_code,
-                'mobile' => $request->mobile,
+                'last_code' => Carbon::now()->addMinutes(15),
+                'email' => $request->email,
             ]);
-            $full_mobile = $demo_user->mobile_code . $demo_user->mobile;
+
+            $data = [
+                'email' => $request->email,
+                'code' => $code
+            ];
 
             try {
-                $response = $this->watsappService->send_verify($full_mobile, $code);
+                Mail::to($request->email)->send(new VerifyAuthMail($data));
             } catch(Exception $e) {
-                // return $this->sendRes(translate('failed to send verification code, please try again later'), false, [], [], 500);
             }
 
             $data = [
@@ -254,12 +260,9 @@ class AuthController extends Controller
         }
     }
 
-
-
     public function forget_password(Request $request){
         $validator = Validator::make($request->all(), [
-            'mobile_code' => ['required', 'string'],
-            'mobile' => ['required', 'string', Rule::exists('rc_users', 'mobile')->where(function($query) {
+            'email' => ['required', 'string', Rule::exists('rc_users', 'email')->where(function($query) {
                 $query->where('status', true);
             }) ],
         ]);
@@ -271,22 +274,23 @@ class AuthController extends Controller
 
 
         $user = User::where([
-            'mobile' => $request->mobile,
-            'mobile_code' => $request->mobile_code,
+            'email' => $request->email,
             'status' => 1,
         ])->first();
         if($user) {
             $code = $this->generate_rand_code();
-            $full_mobile = $user->mobile_code . $user->mobile;
+            $data = [
+                'email' => $request->email,
+                'code' => $code,
+            ];
 
             try {
-                $response = $this->watsappService->send_verify($full_mobile, $code, 'verify_password_recovery');
+                Mail::to($request->email)->send(new ResetPasswordMail($data));
             } catch(Exception $e) {
-                // return $this->sendRes(translate('failed to send verification code, please try again later'), false, [], [], 500);
             }
 
             $user->code = Hash::make($code);
-            $user->last_code = Carbon::now()->addMinutes(10);
+            $user->last_code = Carbon::now()->addMinutes(15);
             $user->save();
             $data = [
                 'id' => $user->id,
@@ -299,7 +303,7 @@ class AuthController extends Controller
                 'code' => $code
             ];
 
-            return $this->sendRes(translate('vefication code has been sent to: ' . $full_mobile), true, $data, [], 200);
+            return $this->sendRes(translate('vefication code has been sent to: ' . $user->email), true, $data, [], 200);
         } else {
             return $this->sendRes(translate('user not found'), false, [], [], 400);
 

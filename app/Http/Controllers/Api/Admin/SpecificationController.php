@@ -72,6 +72,7 @@ class SpecificationController extends Controller
         }
 
 
+        $data = [];
 
 
         if(isset($request->image)) {
