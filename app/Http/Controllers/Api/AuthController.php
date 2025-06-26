@@ -331,16 +331,23 @@ class AuthController extends Controller
             'status' => 1,
         ])->first();
         if($user) {
+
+            // Check if the code is expired
+            if(Carbon::now()->greaterThan($user->last_code)) {
+                return $this->sendRes(translate('verification code has been expired'), false, [], [], 400);
+            }
+
+            // Check if the code is correct
             if(!Hash::check($request->code, $user->code)) {
                 return $this->sendRes(translate('code is incorrect'), false, [], [], 400);
-            } else {
-                $new_hashed_password = Hash::make($request->password);
-                $user->update([
-                   'password' => $new_hashed_password,
-                   'code' => ''
-                ]);
-                return $this->sendRes(translate('password has been reset success please try to login'), true, [], [], 200);
             }
+
+            $new_hashed_password = Hash::make($request->password);
+            $user->update([
+               'password' => $new_hashed_password,
+               'code' => ''
+            ]);
+            return $this->sendRes(translate('password has been reset success please try to login'), true, [], [], 200);
         } else {
             return $this->sendRes(translate('user not found'), false, [], [], 400);
         }

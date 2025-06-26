@@ -318,8 +318,8 @@
                                                 Email Address
                                             </p>
                                             <p style="color: #6366f1; font-size: 18px; font-weight: 600; margin-bottom: 30px; padding: 15px; background-color: #f8fafc; border-radius: 8px; border-left: 4px solid #6366f1;">
-                                                @if (isset($email))
-                                                    {{ $email }}
+                                                @if (isset($data))
+                                                    {{ $data['email'] }}
                                                 @endif
                                             </p>
                                         </div>
@@ -330,8 +330,8 @@
                                             </p>
                                             <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 20px; border-radius: 12px; margin: 20px 0;">
                                                 <p style="color: #ffffff; font-size: 32px; font-weight: 700; margin: 0; letter-spacing: 8px; font-family: 'Courier New', monospace;">
-                                                    @if (isset($code))
-                                                        {{ $code }}
+                                                    @if (isset($data))
+                                                        {{ $data['code'] }}
                                                     @endif
                                                 </p>
                                             </div>
