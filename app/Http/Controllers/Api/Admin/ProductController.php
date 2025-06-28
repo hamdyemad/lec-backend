@@ -251,7 +251,7 @@ class ProductController extends Controller
             ])->delete();
             // End Remove Translations
             $product->versions()->delete();
-            $product->colors()->delete();
+            $product->productColors()->delete();
             $product->addons()->delete();
             $product->warrantlies()->delete();
             $product->update($data);
@@ -282,7 +282,7 @@ class ProductController extends Controller
 
         if ($request->colors) {
             foreach ($request->colors as $color) {
-                $colorModel = $product->colors()->create([
+                $colorModel = $product->productColors()->create([
                     'value' => $color['value'],
                 ]);
                 Translation::create([
@@ -394,6 +394,15 @@ class ProductController extends Controller
                 }
             }
         }
+
+        Translation::where([
+            'translatable_model' => Product::class,
+            'translatable_id'   => $product->id,
+        ])->delete();
+        // End Remove Translations
+        $product->productColors()->delete();
+        $product->addons()->delete();
+        $product->warrantlies()->delete();
         $product->specifications()->detach(); // Detach old specifications
         $product->versions()->delete(); // Delete old versions
         $product->delete();

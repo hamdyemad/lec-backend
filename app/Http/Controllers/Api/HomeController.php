@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Mobile\CategoryResource;
 use App\Http\Resources\Mobile\ProductResource;
 use App\Models\Category;
 use App\Models\Currency;
@@ -49,8 +50,11 @@ class HomeController extends Controller
 
 
         // Category
-        $categories = Category::with('translationsRelations')->latest();
+        $categories = Category::latest();
         $categories = $categories->paginate($per_page, ['*'], 'categories_page');
+        $categories->getCollection()->transform(function ($category) {
+            return new CategoryResource($category);
+        });
 
         // Products
         $products = Product::with('specifications', 'versions', 'addons',
@@ -63,7 +67,7 @@ class HomeController extends Controller
 
         // Recently Products
         $recently_views_products = Product::with('specifications', 'versions', 'addons',
-        'warrantlies', 'productColors', 'translationsRelations')
+        'warrantlies', 'productColors')
         ->whereHas('recently_views', function($query) use ($auth) {
                 $query->where('user_id', $auth->id);
         })->latest();
