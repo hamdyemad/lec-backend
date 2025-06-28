@@ -51,19 +51,12 @@ class HomeController extends Controller
 
         // Category
         $categories = Category::latest();
-        $categories = $categories->paginate($per_page, ['*'], 'categories_page');
-        $categories->getCollection()->transform(function ($category) {
-            return new CategoryResource($category);
-        });
+
 
         // Products
         $products = Product::with('specifications', 'versions', 'addons',
-        'warrantlies', 'productColors', 'translationsRelations')->latest();
+        'warrantlies', 'productColors')->latest();
 
-        $products = $products->paginate($per_page, ['*'], 'products_page');
-        $products->getCollection()->transform(function ($product) {
-            return new ProductResource($product);
-        });
 
         // Recently Products
         $recently_views_products = Product::with('specifications', 'versions', 'addons',
@@ -74,6 +67,13 @@ class HomeController extends Controller
 
 
         if ($keyword) {
+            $categories = $categories->whereHas('translationsRelations', function ($q) use ($keyword) {
+                $q->Where('lang_value', 'like', "%{$keyword}%")
+                ->where(function($query) {
+                    $query->where('lang_key', "name");
+                });
+            });
+
             $products = $products->whereHas('translationsRelations', function ($q) use ($keyword) {
                 $q->Where('lang_value', 'like', "%{$keyword}%")
                 ->where(function($query) use($keyword) {
@@ -88,19 +88,20 @@ class HomeController extends Controller
                     ->orWhere('lang_key', 'content');
                 });
             });
-
-            $categories = $categories->whereHas('translationsRelations', function ($q) use ($keyword) {
-                $q->Where('lang_value', 'like', "%{$keyword}%")
-                ->where(function($query) {
-                    $query->where('lang_key', "name");
-                });
-            });
-
             $auth->recent_searches()->updateOrCreate(
                 ['keyword' => $keyword]
             );
         }
 
+
+        $categories = $categories->paginate($per_page, ['*'], 'categories_page');
+        $categories->getCollection()->transform(function ($category) {
+            return new CategoryResource($category);
+        });
+        $products = $products->paginate($per_page, ['*'], 'products_page');
+        $products->getCollection()->transform(function ($product) {
+            return new ProductResource($product);
+        });
         $recently_views_products = $recently_views_products->paginate($per_page, ['*'], 'recently_views_products_page');
         $recently_views_products->getCollection()->transform(function ($product) {
             return new ProductResource($product);
