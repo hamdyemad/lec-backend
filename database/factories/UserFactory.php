@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\Country;
+use App\Models\UserType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -24,10 +26,15 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
+            'user_type_id' => UserType::first()->id,
             'name' => fake()->name(),
+            'country_id' => Country::first()->id,
+            'city' => Str::random(10),
+            'phone_code_id' => Country::first()->call_key,
             'email' => fake()->unique()->safeEmail(),
+            'phone' => fake()->phoneNumber(),
             'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
+            'password' => static::$password ??= Hash::make('superadminlawyer'),
             'remember_token' => Str::random(10),
         ];
     }

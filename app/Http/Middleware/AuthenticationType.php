@@ -34,7 +34,7 @@ class AuthenticationType
                     return $this->sendRes(translate('you have no permession to use this request'), false, [], [], 401);
                 }
             } else {
-                return $this->sendRes(translate('invalid user type in middleware'), false, [], [], 400);
+                return $this->sendRes(translate('invalid user type please check your permession'), false, [], [], 400);
             }
         } else {
             return $this->sendRes(translate('you are not authenticated'), false, [], [], 401);

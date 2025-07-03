@@ -8,13 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class UserType extends Model
 {
     use HasFactory;
-
-    protected $table = 'tb_user_type';
+    protected $table = 'user_types';
 
     protected $guarded = [];
 
 
-    public function user() {
-        return $this->belongsTo(User::class, 'type');
-    }
 }

@@ -14,7 +14,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
 
-    protected $table = 'rc_users';
+    protected $table = 'users';
     /**
      * The attributes that are mass assignable.
      *
@@ -52,41 +52,15 @@ class User extends Authenticatable
         return $this->belongsTo(UserType::class, 'type');
     }
 
-    public function orders() {
-        return $this->hasMany(Order::class, 'client_id');
+    public function country() {
+        return $this->belongsTo(Country::class);
+    }
+
+    public function city() {
+        return $this->belongsTo(City::class);
     }
 
 
-    public function locations() {
-        return $this->hasMany(UserLocation::class, 'user_id');
-    }
-
-    public function products() {
-        return $this->hasMany(Product::class, 'seller_id');
-    }
-
-
-
-    public function recent_searches() {
-        return $this->hasMany(RecentSearch::class, 'user_id');
-    }
-
-    public function favorite_products() {
-        return $this->hasMany(FavoriteProduct::class, 'user_id');
-    }
-
-
-    public function cards() {
-        return $this->hasMany(UserCard::class, 'user_id');
-    }
-
-    public function roles() {
-        return $this->belongsToMany(Role::class, 'users_roles', 'user_id')->withTimestamps();
-    }
-
-    public function accounts() {
-        return $this->hasMany(Account::class, 'user_id');
-    }
 
 
 }
