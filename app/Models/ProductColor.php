@@ -17,6 +17,13 @@ class ProductColor extends Model
     protected $guarded = [];
 
 
+    public function attachments()
+    {
+        return $this->morphMany(Attachment::class, 'attachable');
+    }
+
+
+
     public function product() {
         return $this->belongsTo(Product::class, 'product_id');
     }

@@ -14,6 +14,10 @@ class Product extends Model
 
     protected $guarded = [];
 
+    public function attachments()
+    {
+        return $this->morphMany(Attachment::class, 'attachable');
+    }
 
 
     public function translationsRelations() {

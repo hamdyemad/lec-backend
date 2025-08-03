@@ -94,7 +94,7 @@ class ProductController extends Controller
 
         $products = $products->latest()->paginate($per_page);
 
-        $products->load('specifications', 'versions', 'productColors');
+        $products->load('specifications', 'versions', 'productColors.attachments');
         $products->getCollection()->transform(function ($item) {
             return new ProductResource($item);
         });
@@ -116,21 +116,28 @@ class ProductController extends Controller
             'translations.*.title' => ['required', 'string', 'max:255'],
             'translations.*.content' => ['required', 'string'],
 
+            'image' => ['required', 'image', 'max:2048'],
+
+
             'price' => ['required', 'numeric'],
             'category_id' => ['required', 'exists:categories,id'],
 
             // Colors
             'colors' => ['required', 'array'],
-            'colors.*.lang_id' => ['required', 'exists:languages,id'],
-            'colors.*.name' => ['required', 'string', 'max:255'],
             'colors.*.value' => ['required', 'string', 'max:255'],
-            // Images
-            'images' => ['nullable', 'array'],
-            'images.*' => ['nullable', 'image', 'max:2048'],
 
             // Images
-            'structural_images' => ['nullable', 'array'],
-            'structural_images.*' => ['nullable', 'image', 'max:2048'],
+            'colors.*.images' => ['nullable', 'array'],
+            'colors.*.images.*' => ['nullable', 'image', 'max:2048'],
+
+            // Structural Images
+            'colors.*.structural_images' => ['nullable', 'array'],
+            'colors.*.structural_images.*' => ['nullable', 'image', 'max:2048'],
+
+            // Colors Translations
+            'colors.*.translations' => ['required', 'array'],
+            'colors.*.translations.*.lang_id' => ['required', 'exists:languages,id'],
+            'colors.*.translations.*.name' => ['required', 'string', 'max:255'],
 
             // Specifications
             'specifications' => ['nullable', 'array'],
@@ -138,20 +145,26 @@ class ProductController extends Controller
 
             // Warrantly
             'warrantly' => ['nullable', 'array'],
-            'warrantly.*.lang_id' => ['required_with:warrantly', 'exists:languages,id'],
             'warrantly.*.type' => ['required_with:warrantly', 'string', 'max:255', 'in:km,battery'],
-            'warrantly.*.title' => ['required_with:warrantly', 'string', 'max:255'],
+            // Warrantly Translations
+            'warrantly.*.translations' => ['required_with:warrantly', 'array'],
+            'warrantly.*.translations.*.lang_id' => ['required_with:warrantly', 'exists:languages,id'],
+            'warrantly.*.translations.*.title' => ['required_with:warrantly', 'string', 'max:255'],
 
             // Versions
             'versions' => ['required', 'array'],
-            'versions.*.lang_id' => ['required', 'exists:languages,id'],
-            'versions.*.name' => ['required', 'string', 'max:255'],
             'versions.*.price' => ['required', 'numeric'],
+            // Versions Translations
+            'versions.*.translations' => ['required_with:versions', 'array'],
+            'versions.*.translations.*.lang_id' => ['required_with:versions', 'exists:languages,id'],
+            'versions.*.translations.*.name' => ['required_with:versions', 'string', 'max:255'],
             // Addons
             'addons' => ['nullable', 'array'],
-            'addons.*.lang_id' => ['required_with:addons', 'exists:languages,id'],
-            'addons.*.name' => ['required_with:addons', 'string', 'max:255'],
             'addons.*.price' => ['required_with:addons', 'numeric'],
+            // Addons Translations
+            'addons.*.translations' => ['required', 'array'],
+            'addons.*.translations.*.lang_id' => ['required_with:addons', 'exists:languages,id'],
+            'addons.*.translations.*.name' => ['required_with:addons', 'string', 'max:255'],
 
         ];
         $validator = Validator::make($request->all(), $rules);
@@ -164,48 +177,6 @@ class ProductController extends Controller
             'category_id' => $request->category_id,
             'price' => $request->price,
         ];
-
-
-
-        if (isset($request->images)) {
-            // Remove old images if they exist
-            if ($product && $product->images) {
-                $oldImages = json_decode($product->images, true);
-                foreach ($oldImages as $oldImage) {
-                    if (file_exists(public_path($oldImage))) {
-                        unlink(public_path($oldImage));
-                    }
-                }
-            }
-            $images = [];
-            foreach ($request->images as $image) {
-                $imagePath = $this->uploadFiles($image, $this->products_path);
-                if ($imagePath) {
-                    $images[] = $imagePath;
-                }
-            }
-            $data['images'] = json_encode($images);
-        }
-
-        if (isset($request->structural_images)) {
-            // Remove old images if they exist
-            if ($product && $product->structural_images) {
-                $oldstructural_images = json_decode($product->structural_images, true);
-                foreach ($oldstructural_images as $oldImage) {
-                    if (file_exists(public_path($oldImage))) {
-                        unlink(public_path($oldImage));
-                    }
-                }
-            }
-            $images = [];
-            foreach ($request->structural_images as $image) {
-                $imagePath = $this->uploadFiles($image, $this->products_path);
-                if ($imagePath) {
-                    $images[] = $imagePath;
-                }
-            }
-            $data['structural_images'] = json_encode($images);
-        }
 
 
         if ($product) {
@@ -223,6 +194,22 @@ class ProductController extends Controller
             }
             if($product->productColors()->count() > 0) {
                 foreach($product->productColors as $color) {
+                    if($color->attachments()->count() > 0) {
+                        // Images
+                        foreach($color->attachments()->where('type', 'image')->get() as $attachment) {
+                            if (file_exists($attachment->path)) {
+                                unlink($attachment->path);
+                            }
+                            $attachment->delete();
+                        }
+                        // Structural Images
+                        foreach($color->attachments()->where('type', 'structural_image')->get() as $attachment) {
+                            if (file_exists($attachment->path)) {
+                                unlink($attachment->path);
+                            }
+                            $attachment->delete();
+                        }
+                    }
                     Translation::where([
                         'translatable_model' => ProductColor::class,
                         'translatable_id'   => $color->id,
@@ -245,6 +232,9 @@ class ProductController extends Controller
                     ])->delete();
                 }
             }
+
+
+
             Translation::where([
                 'translatable_model' => Product::class,
                 'translatable_id'   => $product->id,
@@ -261,18 +251,38 @@ class ProductController extends Controller
             $product = Product::create($data);
         }
 
+        if (request()->file("image")) {
+            if(isset($product) && $product->image) {
+                if (file_exists($product->image)) {
+                    unlink($product->image);
+                }
+            }
+            $imagePath = $this->uploadFiles(request()->file("image"), $this->products_path . $product->id . '/');
+            $product->attachments()->create([
+                'path' => $imagePath,
+            ]);
+            $product->image = $imagePath;
+            $product->save();
+
+        }
+
         if ($request->versions) {
             foreach ($request->versions as $version) {
                 $versionModel = $product->versions()->create([
                     'price' => $version['price'],
                 ]);
-                Translation::create([
-                    'translatable_model' => ProductVersion::class,
-                    'translatable_id'   => $versionModel->id,
-                    'lang_id'           => $version['lang_id'],
-                    'lang_key'          => 'name',
-                    'lang_value'        => $version['name'],
-                ]);
+
+                if($version['translations']) {
+                    foreach($version['translations'] as $translation) {
+                        Translation::create([
+                            'translatable_model' => ProductVersion::class,
+                            'translatable_id'   => $versionModel->id,
+                            'lang_id'           => $translation['lang_id'],
+                            'lang_key'          => 'name',
+                            'lang_value'        => $translation['name'],
+                        ]);
+                    }
+                }
             }
         }
 
@@ -281,17 +291,42 @@ class ProductController extends Controller
         }
 
         if ($request->colors) {
-            foreach ($request->colors as $color) {
+            foreach ($request->colors as $index => $color) {
                 $colorModel = $product->productColors()->create([
                     'value' => $color['value'],
                 ]);
-                Translation::create([
-                    'translatable_model' => ProductColor::class,
-                    'translatable_id'   => $colorModel->id,
-                    'lang_id'           => $color['lang_id'],
-                    'lang_key'          => 'name',
-                    'lang_value'        => $color['name'],
-                ]);
+
+                if (request()->file("colors.$index.images")) {
+                    foreach (request()->file("colors.$index.images") as $image) {
+                        $imagePath = $this->uploadFiles($image, $this->products_path . $product->id . '/');
+                        $colorModel->attachments()->create([
+                            'path' => $imagePath,
+                            'type' => 'image',
+                        ]);
+                    }
+                }
+
+                if (request()->file("colors.$index.structural_images")) {
+                    foreach (request()->file("colors.$index.structural_images") as $image) {
+                        $imagePath = $this->uploadFiles($image, $this->products_path . $product->id . '/');
+                        $colorModel->attachments()->create([
+                            'path' => $imagePath,
+                            'type' => 'structural_image',
+                        ]);
+                    }
+                }
+
+                if($color['translations']) {
+                    foreach($color['translations'] as $translation) {
+                        Translation::create([
+                            'translatable_model' => ProductColor::class,
+                            'translatable_id'   => $colorModel->id,
+                            'lang_id'           => $translation['lang_id'],
+                            'lang_key'          => 'name',
+                            'lang_value'        => $translation['name'],
+                        ]);
+                    }
+                }
 
             }
         }
@@ -302,13 +337,17 @@ class ProductController extends Controller
                 $addonModel = $product->addons()->create([
                     'price' => $addon['price'],
                 ]);
-                Translation::create([
-                    'translatable_model' => ProductAddon::class,
-                    'translatable_id'   => $addonModel->id,
-                    'lang_id'           => $addon['lang_id'],
-                    'lang_key'          => 'name',
-                    'lang_value'        => $color['name'],
-                ]);
+                if($addon['translations'] ) {
+                    foreach($addon['translations'] as $translation) {
+                        Translation::create([
+                            'translatable_model' => ProductAddon::class,
+                            'translatable_id'   => $addonModel->id,
+                            'lang_id'           => $translation['lang_id'],
+                            'lang_key'          => 'name',
+                            'lang_value'        => $translation['name'],
+                        ]);
+                    }
+                }
             }
         }
 
@@ -317,13 +356,18 @@ class ProductController extends Controller
                 $warrantlyModel = $product->warrantlies()->create([
                     'type' => $warrantly['type'],
                 ]);
-                Translation::create([
-                    'translatable_model' => ProductWarrantly::class,
-                    'translatable_id'   => $warrantlyModel->id,
-                    'lang_id'           => $warrantly['lang_id'],
-                    'lang_key'          => 'title',
-                    'lang_value'        => $warrantly['title'],
-                ]);
+                if($warrantly['translations'] ) {
+                    foreach($warrantly['translations'] as $translation) {
+                        Translation::create([
+                            'translatable_model' => ProductWarrantly::class,
+                            'translatable_id'   => $warrantlyModel->id,
+                            'lang_id'           => $translation['lang_id'],
+                            'lang_key'          => 'title',
+                            'lang_value'        => $translation['title'],
+                        ]);
+                    }
+                }
+
             }
         }
 
@@ -364,7 +408,7 @@ class ProductController extends Controller
 
     public function show(Request $request, $uuid)
     {
-        $product = Product::with('productColors', 'versions', 'addons', 'warrantlies')->where('uuid', $uuid)->first();
+        $product = Product::with('productColors.attachments', 'versions', 'addons', 'warrantlies')->where('uuid', $uuid)->first();
 
         if (!$product) {
             return $this->sendRes(translate('product not found'), false, [], [], 400);
@@ -385,15 +429,17 @@ class ProductController extends Controller
         if (!$product) {
             return $this->sendRes(translate('product not found'), false, [], [], 400);
         }
-        // Remove old images if they exist
-        if ($product && $product->images) {
-            $oldImages = json_decode($product->images, true);
-            foreach ($oldImages as $oldImage) {
-                if (file_exists(public_path($oldImage))) {
-                    unlink(public_path($oldImage));
+
+        foreach($product->productColors as $color) {
+            foreach($color->attachments as $attachment) {
+                if (file_exists($attachment->path)) {
+                    unlink($attachment->path);
                 }
+                $attachment->delete();
             }
         }
+
+
 
         Translation::where([
             'translatable_model' => Product::class,

@@ -51,7 +51,7 @@ class ProductController extends Controller
         $specification_id = $request->specification_id ?? '';
 
         $products = Product::with('specifications', 'versions', 'addons',
-        'warrantlies', 'productColors', 'translationsRelations')
+        'warrantlies', 'productColors.attachments', 'translationsRelations')
         ->latest();
 
         if ($recently_views) {
@@ -101,7 +101,7 @@ class ProductController extends Controller
     public function show(Request $request, $uuid)
     {
         $authUser = auth()->user();
-        $product = Product::with('specifications', 'versions', 'addons', 'warrantlies', 'productColors')->where('uuid', $uuid)->first();
+        $product = Product::with('specifications', 'versions', 'addons', 'warrantlies', 'productColors.attachments')->where('uuid', $uuid)->first();
         if (!$product) {
             return $this->sendRes(translate('product not found'), false, [], [], 400);
         }
