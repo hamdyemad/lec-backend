@@ -30,6 +30,14 @@ class Order extends Model
         return $this->belongsTo(ShippingMethod::class, 'shipping_method_id');
     }
 
+    public function payment_method() {
+        return $this->belongsTo(PaymentMethod::class, 'payment_method_id');
+    }
+
+    public function payment() {
+        return $this->hasOne(Payment::class, 'order_id');
+    }
+
 
     public function items() {
         return $this->hasMany(OrderItem::class, 'order_id');

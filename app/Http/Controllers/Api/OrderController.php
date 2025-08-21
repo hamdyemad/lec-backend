@@ -15,6 +15,7 @@ use App\Models\FeatureType;
 use App\Models\Message;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\ShippingMethod;
@@ -26,6 +27,7 @@ use App\Service\MesagatService;
 use App\Service\MoyasarService;
 use App\Service\PushNotificaion;
 use App\Service\WatsappService;
+use App\Service\StripeService;
 use App\Traits\Delivery;
 use App\Traits\FileUploads;
 use App\Traits\Location;
@@ -48,7 +50,7 @@ class OrderController extends Controller
      */
 
 
-    public function __construct(public WatsappService $watsappService)
+    public function __construct(public WatsappService $watsappService, public StripeService $stripeService)
     {
 
     }
@@ -142,7 +144,9 @@ class OrderController extends Controller
 
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
-            return $this->errorResponse($validator);
+            $messages = $validator->errors()->all();
+            $message = implode('<br>', $messages);
+            return $this->sendRes($message, false, [], $validator->errors(), 400);
         }
 
         $data = [
@@ -155,9 +159,24 @@ class OrderController extends Controller
             'payment_method_id' => $request->payment_method_id,
         ];
 
+
         // If The Payment Method is Credit/Debit Card
         if($request->payment_method_id == 2) {
             $data['card_id'] = $request->card_id;
+
+            // $customer_id = 'cus_Stzp6nd0GBbcZ8';
+            // $cardId = 'card_1RyBsPFG6Zq4MxzkOkoi9o0r';
+
+            // return $this->stripeService->createCard($customer_id);
+
+            // return $this->stripeService->createCustomer();
+            // return $this->stripeService->createPaymentIntent();
+            // return $this->stripeService->listPaymentIntent();
+            $id = 'pi_3RyBI6FG6Zq4Mxzk1j0iUQKs';
+            // return $this->stripeService->confirmPaymentIntent($id, $cardId);
+            // return $this->stripeService->capturePaymentIntent($id);
+
+            // return $this->stripeService->createPaymentIntent();
         }
 
         $order = Order::create($data);
@@ -204,14 +223,35 @@ class OrderController extends Controller
         } else if($shipping_method->type == 'percent') {
             $grand_total = $totals + ($totals *  ($shipping_method->value / 100));
         }
+
+
+
         $order->update([
             'total' => $totals,
             'shipping_type' => $shipping_method->type,
             'shipping_value' => $shipping_method->value,
             'grand_total' => $grand_total,
         ]);
-        $title_notify = translate('order created');
-        $order->load(['items', 'status']);
+
+         // If The Payment Method is Credit/Debit Card
+        if($request->payment_method_id == 2) {
+            $title_notify = __('orders.order created success please confirm your payment gateway');
+            $paymentIntent = $this->stripeService->createPaymentIntent($grand_total);
+            if($paymentIntent) {
+                Payment::create([
+                    'paid_user_id' => auth()->id(),
+                    'order_id' => $order->id,
+                    'payment_gateway_id' => $paymentIntent['id'],
+                    'client_secret' => $paymentIntent['client_secret'],
+                    'ip' => request()->ip(),
+                    'amount' => $grand_total,
+                    'currency' => 'usd'
+                ]);
+            }
+        } else {
+            $title_notify = __('orders.order created success');
+        }
+
 
         // Send Notifications
         $auth->notifications()->create([
@@ -219,7 +259,16 @@ class OrderController extends Controller
             'content' => $title_notify
         ]);
 
-        return $this->sendRes($title_notify, true, $order);
+        $data = [
+            'reference' => $order->reference,
+            'payment_method' => $order->payment_method,
+        ];
+        if($order->payment_method->id == 2) {
+            $data['stripe_public_key'] = env('STRIPE_PUBLIC_KEY');
+            $data['payment'] = $order->payment;
+        }
+
+        return $this->sendRes($title_notify, true, $data);
     }
 
 
@@ -234,6 +283,8 @@ class OrderController extends Controller
         }
 
         $order->load(['items.product.specifications', 'status', 'delivery_location']);
+
+        $order = new OrderResource($order);
         return $this->sendRes(translate('order data'), true, $order);
 
     }

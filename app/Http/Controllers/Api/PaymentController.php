@@ -45,6 +45,23 @@ class PaymentController extends Controller
     }
 
 
+    public function stripe_webhook(Request $request) {
+
+        $payment_gateway_id = $request['data']['object']['id'];
+        $type = $request['type'];
+        $payment = Payment::where('payment_gateway_id', $payment_gateway_id)->first();
+        if($payment) {
+            $payment->update([
+                'status' => explode('.', $type)[1]
+            ]);
+        }
+        Log::info('hello dear', $request['data']);
+        Log::info('type' . $type);
+
+
+    }
+
+
 
 
 

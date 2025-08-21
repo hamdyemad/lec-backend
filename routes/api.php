@@ -132,6 +132,7 @@ Route::group(['middleware' => 'translate'], function() {
 
 
 
+
         Route::get('/notifications', [NotificationController::class, 'index']);
 
         Route::get('/home', [HomeController::class, 'home']);
@@ -142,11 +143,12 @@ Route::group(['middleware' => 'translate'], function() {
 
         Route::get('/test', [NotificationController::class, 'index']);
 
-
-
     });
 
 });
+
+// Strip Webhook
+Route::post('/stripe/webhook', [PaymentController::class, 'stripe_webhook']);
 
 
 

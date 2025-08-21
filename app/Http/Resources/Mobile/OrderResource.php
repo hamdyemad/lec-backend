@@ -18,6 +18,9 @@ class OrderResource extends JsonResource
             "id" => $this->id,
             "uuid" => $this->uuid,
             "reference" => $this->reference,
+            'payment_method' => $this->payment_method,
+            'stripe_public_key' => env('STRIPE_PUBLIC_KEY'),
+            'payment' => $this->payment,
             'status' => new StatusResource($this->whenLoaded('status')),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
         ];

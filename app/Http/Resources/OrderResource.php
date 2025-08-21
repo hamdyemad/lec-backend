@@ -20,6 +20,8 @@ class OrderResource extends JsonResource
             "uuid" => $this->uuid,
             "reference" => $this->reference,
             'status' => new StatusResource($this->whenLoaded('status')),
+            'payment_method' => $this->payment_method,
+            'payment' => $this->payment,
             'client' => new UserResource($this->whenLoaded('client')),
             'items' => OrderItemResource::collection($this->whenLoaded('items'))
         ];

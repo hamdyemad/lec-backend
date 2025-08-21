@@ -48,7 +48,7 @@ class OrderController extends Controller
 
         $per_page = $request->per_page ? $request->per_page : 12;
 
-        $orders = Order::with(['items.product.specifications', 'items.product.productColors', 'status', 'delivery_location', 'shipping_method'])->latest();
+        $orders = Order::with(['items.product.specifications', 'items.product.productColors', 'payment_method', 'payment', 'status', 'delivery_location', 'shipping_method'])->latest();
         $orders = $orders->paginate($per_page);
 
         $orders->getCollection()->transform(function ($order) {
@@ -90,6 +90,7 @@ class OrderController extends Controller
         $order = Order::with([
             'items.product.specifications',
             'items.product.productColors',
+            'payment_method', 'payment',
             'status',
             'delivery_location',
             'shipping_method'
