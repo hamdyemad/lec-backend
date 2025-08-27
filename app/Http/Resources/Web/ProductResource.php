@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Resources\Mobile;
+namespace App\Http\Resources\Web;
 
 use App\Http\Resources\SpecificationResource;
 use Illuminate\Http\Request;
