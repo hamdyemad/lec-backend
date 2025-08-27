@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Resources;
+namespace App\Http\Resources\Mobile;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class CategoryResource extends JsonResource
+class ProductAddonResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -16,9 +16,9 @@ class CategoryResource extends JsonResource
     {
         return [
             "id" => $this->id,
-            "uuid" => $this->uuid,
+            "product_id" => $this->product_id,
             "name" => $this->translate('name'),
-            "image" => ($this->image) ? asset('/' . $this->image) : '',
+            "price" => $this->price,
             "created_at" => $this->created_at,
         ];
     }

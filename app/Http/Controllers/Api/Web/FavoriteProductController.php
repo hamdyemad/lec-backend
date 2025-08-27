@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Web\ProductResource;
+use App\Http\Resources\Mobile\ProductResource;
 use App\Models\FavoriteProduct;
 use App\Models\Feature;
 use App\Models\FeatureType;

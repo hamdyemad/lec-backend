@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Web\CategoryResource;
-use App\Http\Resources\Web\ProductResource;
+use App\Http\Resources\Mobile\CategoryResource;
+use App\Http\Resources\Mobile\ProductResource;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\FeatureType;

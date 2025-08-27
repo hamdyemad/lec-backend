@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Web;
 
 use App\Events\OrderCreationEvent;
 use App\Events\OrderFindEvent;
 use App\Events\SendMessage;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Web\OrderResource;
+use App\Http\Resources\Mobile\OrderResource;
 use App\Models\ApiKey;
 use App\Models\Cart;
 use App\Models\Currency;

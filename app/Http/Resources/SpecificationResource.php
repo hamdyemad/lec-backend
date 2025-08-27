@@ -19,7 +19,7 @@ class SpecificationResource extends JsonResource
             "uuid" => $this->uuid,
             "header" => $this->translate('header'),
             "body" => $this->translate('body'),
-            "image" => $this->image,
+            "image" => ($this->image) ? asset('/' . $this->image) : '',
             "created_at" => $this->created_at,
         ];
     }
