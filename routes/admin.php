@@ -5,8 +5,10 @@ use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\ClientController;
 use App\Http\Controllers\Api\Admin\EmployeeController;
 use App\Http\Controllers\Api\Admin\LanguageController;
+use App\Http\Controllers\Api\Admin\MessageController;
 use App\Http\Controllers\Api\Admin\OrderController;
 use App\Http\Controllers\Api\Admin\ProductController;
+use App\Http\Controllers\Api\Admin\ReviewsController;
 use App\Http\Controllers\Api\Admin\ShippingMethodController;
 use App\Http\Controllers\Api\Admin\SpecificationController;
 use App\Http\Controllers\Api\Admin\StatusController;
@@ -132,6 +134,10 @@ Route::group(['middleware' => 'translate', 'prefix' => 'admin'], function() {
             Route::get('/{uuid}', [StatusController::class, 'show']);
             Route::delete('/{uuid}', [StatusController::class, 'delete']);
         });
+
+
+        Route::get('/messages', [MessageController::class, 'index']);
+        Route::get('/reviews', [ReviewsController::class, 'index']);
 
 
     });

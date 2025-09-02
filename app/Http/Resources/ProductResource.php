@@ -25,6 +25,7 @@ class ProductResource extends JsonResource
             'price' => $this->price,
             'image' => ($this->image) ? asset('/' . $this->image) : '',
             'status' => $this->status,
+            'category' => new CategoryResource($this->whenLoaded('category')),
             'created_at' => $this->created_at,
             'colors' => ProductColorResource::collection($this->whenLoaded('productColors')),
             'versions' => ProductVersionResource::collection($this->whenLoaded('versions')),

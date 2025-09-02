@@ -59,7 +59,7 @@ class ProductController extends Controller
         $to_price = $request->to_price ?? '';
 
 
-        $products = Product::with('translationsRelations');
+        $products = Product::with('translationsRelations', 'category');
 
         if ($recently_views) {
             $products = $products->whereHas('recently_views', function ($query) use ($authUser) {
@@ -407,7 +407,7 @@ class ProductController extends Controller
 
     public function show(Request $request, $uuid)
     {
-        $product = Product::with('productColors.attachments', 'versions', 'addons', 'warrantlies')->where('uuid', $uuid)->first();
+        $product = Product::with('productColors.attachments', 'versions', 'addons', 'warrantlies', 'category')->where('uuid', $uuid)->first();
 
         if (!$product) {
             return $this->sendRes(translate('product not found'), false, [], [], 400);
