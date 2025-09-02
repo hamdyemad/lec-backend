@@ -28,7 +28,7 @@ class Product extends Model
     }
 
     public function category() {
-        return $this->belongsTo(Feature::class, 'category_id');
+        return $this->belongsTo(Category::class, 'category_id');
     }
 
     public function versions() {
@@ -41,6 +41,11 @@ class Product extends Model
 
     public function specifications() {
         return $this->belongsToMany(Specification::class, 'products_specifications', 'product_id', 'specification_id');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
     }
 
 

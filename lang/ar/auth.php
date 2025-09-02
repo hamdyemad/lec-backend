@@ -30,5 +30,6 @@ return [
     'password has been reset success' => 'الباسورد تم استرجاعه بنجاح',
     'profile updated success' => 'تم تعديل بيانات البروفايل بنجاح',
     'not active' => 'المستخدم غير مفعل',
-
+    'old password is incorrect' => 'كلمة المرور القديمة غير صحيحة',
+    'password changed success' => 'تم تغيير كلمة المرور بنجاح'
 ];

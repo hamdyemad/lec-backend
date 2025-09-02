@@ -23,6 +23,7 @@ class UserResource extends JsonResource
             "email" => $this->email,
             "mobile" => $this->mobile,
             "mobile_code" => $this->mobile_code,
+            'image' => ($this->image) ? asset('/' . $this->image) : '',
             "created_at" => $this->created_at,
         ];
     }

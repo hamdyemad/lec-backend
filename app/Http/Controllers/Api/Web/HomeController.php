@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Mobile\CategoryResource;
-use App\Http\Resources\Mobile\ProductResource;
+use App\Http\Resources\Web\CategoryResource;
+use App\Http\Resources\Web\ProductResource;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\FeatureType;
+use App\Models\Message;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\UserType;
@@ -131,6 +132,31 @@ class HomeController extends Controller
         return $this->sendRes(translate('deleted searches data successfully'), true);
     }
 
+
+
+    public function send_message(Request $request)
+    {
+
+        $rules = [
+            'name' => ['required', 'string', 'max:255'],
+            'message' => ['required', 'string'],
+            'email' => ['required', 'email', 'string', 'max:255'],
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
+        if ($validator->fails()) {
+            $message = implode('<br>', $validator->errors()->all());
+            return $this->sendRes($message, false, [], $validator->errors(), 400);
+        }
+
+        Message::create([
+            'email' => $request->email,
+            'name' => $request->name,
+            'message' => $request->message,
+        ]);
+        return $this->sendRes(__('main.message sent success'), true);
+
+    }
 
 
 }

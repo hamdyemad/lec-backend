@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Admin\EmployeeController;
 use App\Http\Controllers\Api\Admin\LanguageController;
 use App\Http\Controllers\Api\Admin\OrderController;
 use App\Http\Controllers\Api\Admin\ProductController;
+use App\Http\Controllers\Api\Admin\ShippingMethodController;
 use App\Http\Controllers\Api\Admin\SpecificationController;
 use App\Http\Controllers\Api\Admin\StatusController;
 use App\Http\Controllers\Api\Admin\SupportPageController;
@@ -100,6 +101,15 @@ Route::group(['middleware' => 'translate', 'prefix' => 'admin'], function() {
             Route::get('/{uuid}', [SupportPageController::class, 'show']);
             Route::post('/{uuid}', [SupportPageController::class, 'edit']);
             Route::delete('/{uuid}', [SupportPageController::class, 'delete']);
+        });
+
+        // Shipping Methods
+        Route::group(['prefix' => 'shipping-methods'], function() {
+            Route::get('/', [ShippingMethodController::class, 'index']);
+            Route::post('/', [ShippingMethodController::class, 'store']);
+            Route::get('/{id}', [ShippingMethodController::class, 'show']);
+            Route::post('/{id}', [ShippingMethodController::class, 'edit']);
+            Route::delete('/{id}', [ShippingMethodController::class, 'delete']);
         });
 
 

@@ -23,6 +23,7 @@ class OrderResource extends JsonResource
             'payment' => $this->payment,
             'status' => new StatusResource($this->whenLoaded('status')),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
+            'delivery_information' => $this->whenLoaded('delivery_information'),
         ];
     }
 }

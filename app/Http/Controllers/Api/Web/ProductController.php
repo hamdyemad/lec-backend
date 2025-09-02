@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\Web;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Mobile\ProductResource;
+use App\Http\Resources\Web\ProductResource;
 use App\Models\ApiKey;
 use App\Models\Category;
 use App\Models\Feature;
@@ -51,7 +51,7 @@ class ProductController extends Controller
         $specification_id = $request->specification_id ?? '';
 
         $products = Product::with('specifications', 'versions', 'addons',
-        'warrantlies', 'productColors.attachments', 'translationsRelations')
+        'warrantlies', 'productColors.attachments', 'translationsRelations', 'category')
         ->latest();
 
         if ($recently_views) {
@@ -101,11 +101,10 @@ class ProductController extends Controller
     public function show(Request $request, $uuid)
     {
         $authUser = auth()->user();
-        $product = Product::with('specifications', 'versions', 'addons', 'warrantlies', 'productColors.attachments')->where('uuid', $uuid)->first();
+        $product = Product::with('specifications', 'versions', 'addons', 'warrantlies', 'productColors.attachments', 'category')->where('uuid', $uuid)->first();
         if (!$product) {
             return $this->sendRes(translate('product not found'), false, [], [], 400);
         }
-
 
         $product->recently_views()->sync(auth()->id()); // Add to recently viewed
 

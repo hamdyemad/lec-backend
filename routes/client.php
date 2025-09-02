@@ -7,10 +7,12 @@ use App\Http\Controllers\Api\Web\CountryController;
 use App\Http\Controllers\Api\Web\FavoriteProductController;
 use App\Http\Controllers\Api\Web\HomeController;
 use App\Http\Controllers\Api\Web\LanguageController;
+use App\Http\Controllers\Api\Web\NewsLetterController;
 use App\Http\Controllers\Api\Web\NotificationController;
 use App\Http\Controllers\Api\Web\OrderController;
 use App\Http\Controllers\Api\Web\PaymentController;
 use App\Http\Controllers\Api\Web\ProductController;
+use App\Http\Controllers\Api\Web\ReviewController;
 use App\Http\Controllers\Api\Web\SpecificationController;
 use App\Http\Controllers\Api\Web\SupportPageController;
 use App\Http\Controllers\Api\Web\UserCardController;
@@ -23,6 +25,7 @@ Route::group(['middleware' => 'translate', 'prefix' => 'client'], function() {
         Route::post('/login', [AuthController::class, 'login']);
         Route::get('/profile', [AuthController::class, 'profile'])->middleware('auth:sanctum');
         Route::post('/profile', [AuthController::class, 'update_profile'])->middleware('auth:sanctum');
+        Route::post('/passwords', [AuthController::class, 'update_password'])->middleware('auth:sanctum');
 
         Route::post('/firebase-token', [AuthController::class, 'firebase_save_token'])->middleware('auth:sanctum');
 
@@ -62,11 +65,18 @@ Route::group(['middleware' => 'translate', 'prefix' => 'client'], function() {
         // Products
         Route::group(['prefix' => 'products'], function() {
             Route::get('/', [ProductController::class, 'index']);
-            Route::post('/', [ProductController::class, 'store'])->middleware('auth_type:admin');
-            Route::post('/{id}', [ProductController::class, 'edit'])->middleware('auth_type:admin');
-            Route::get('/{id}', [ProductController::class, 'show']);
-            Route::delete('/{id}', [ProductController::class, 'delete'])->middleware('auth_type:admin');
+            Route::get('/{uuid}', [ProductController::class, 'show']);
+            Route::post('/{uuid}/reviews', [ReviewController::class, 'store']);
         });
+
+        // Reviews
+        Route::group(['prefix' => 'reviews'], function() {
+            Route::get('/', [ReviewController::class, 'index']);
+        });
+
+
+        Route::post('/newsletters', [NewsLetterController::class, 'store']);
+        Route::post('/messages', [HomeController::class, 'send_message']);
 
 
         // Orders

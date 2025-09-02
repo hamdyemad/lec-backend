@@ -172,7 +172,6 @@ class ProductController extends Controller
             return $this->errorResponse($validator);
         }
 
-        return $request->all();
         $data = [
             'category_id' => $request->category_id,
             'price' => $request->price,

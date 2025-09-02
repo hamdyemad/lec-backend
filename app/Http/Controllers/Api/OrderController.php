@@ -22,6 +22,7 @@ use App\Models\ShippingMethod;
 use App\Models\Status;
 use App\Models\User;
 use App\Models\UserType;
+use App\Rules\BelongsToProduct;
 use App\Service\LogistiService;
 use App\Service\MesagatService;
 use App\Service\MoyasarService;
@@ -114,31 +115,24 @@ class OrderController extends Controller
             'count.*' => ['required', 'integer', 'min:1'],
 
             'color_ids' => ['required', 'array'],
-            'color_ids.*' => ['required', Rule::exists('products_colors', 'id')->where(function ($query) use ($request) {
-                foreach($request->product_ids as $product_id) {
-                    $query->where('product_id', $product_id);
-                }
-            })],
+            'color_ids.*' => ['required',  new BelongsToProduct('products_colors')],
 
             'addons' => ['nullable', 'array'],
             'addons.*' => ['nullable', 'array'],
-            'addons.*.*' => ['required', Rule::exists('products_addons', 'id')->where(function ($query) use ($request) {
-                foreach($request->product_ids as $product_id) {
-                    $query->where('product_id', $product_id);
-                }
-            })],
+            'addons.*.*' => ['required', new BelongsToProduct('products_addons')],
             'version_ids' => ['nullable', 'array'],
-            'version_ids.*' => ['nullable', Rule::exists('products_versions', 'id')->where(function ($query) use ($request) {
-                foreach($request->product_ids as $product_id) {
-                    $query->where('product_id', $product_id);
-                }
-            })],
+            'version_ids.*' => ['nullable', new BelongsToProduct('products_versions')],
             'delivery_location_id' => ['required', 'exists:countries,id'],
             'shipping_method_id' => ['required', 'exists:shipping_methods,id'],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
-            // 'card_id' => ['required_if:payment_method_id,2', Rule::exists('users_cards', 'id')->where(function ($query) use ($auth) {
-            //     $query->where('user_id', $auth->id);
-            // })],
+
+            'delivery_information.first_name' => ['required', 'string', 'max:255'],
+            'delivery_information.last_name' => ['required', 'string', 'max:255'],
+            'delivery_information.address' => ['required', 'string', 'max:255'],
+            'delivery_information.city' => ['required', 'string', 'max:255'],
+            'delivery_information.zip_code' => ['required', 'string', 'max:255'],
+            'delivery_information.phone_code' => ['required', 'string', 'exists:countries,call_key'],
+            'delivery_information.phone' => ['required', 'string', 'max:255'],
         ];
 
 

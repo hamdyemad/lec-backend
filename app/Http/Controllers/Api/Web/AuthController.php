@@ -402,6 +402,31 @@ class AuthController extends Controller
         }
 
         return $this->sendRes(translate('your token has been saved'), true);
+    }
+
+    public function update_password(Request $request)
+    {
+        $rules = [
+            'old_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
+        if($validator->fails()) {
+            $message = implode('<br>', $validator->errors()->all());
+            return $this->sendRes($message, false, [], $validator->errors(), 400);
+        }
+
+        $user = auth()->user();
+        $checked_password = Hash::check($request->old_password, $user->password);
+        if($checked_password) {
+            $user->update([
+                'password' => Hash::make($request->password),
+            ]);
+            return $this->sendRes(__('auth.password changed success'), true, [], [], 200);
+        } else {
+            return $this->sendRes(__('auth.old password is incorrect'), false, [], [], 400);
+        }
 
 
     }

@@ -19,5 +19,7 @@ return [
     'verification code has been expired' => 'verification code has been expired',
     'verification code is incorrect' => 'verification code is incorrect',
     'email has been registerd success' => 'email has been registerd success',
+    'old password is incorrect' => 'old password is incorrect',
+    'password changed success' => 'password changed success',
 
 ];

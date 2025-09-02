@@ -6,7 +6,7 @@ use App\Events\OrderCreationEvent;
 use App\Events\OrderFindEvent;
 use App\Events\SendMessage;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Mobile\OrderResource;
+use App\Http\Resources\Web\OrderResource;
 use App\Models\ApiKey;
 use App\Models\Cart;
 use App\Models\Currency;
@@ -14,6 +14,7 @@ use App\Models\Feature;
 use App\Models\FeatureType;
 use App\Models\Message;
 use App\Models\Order;
+use App\Models\OrderDeliveryInformation;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Product;
@@ -22,6 +23,7 @@ use App\Models\ShippingMethod;
 use App\Models\Status;
 use App\Models\User;
 use App\Models\UserType;
+use App\Rules\BelongsToProduct;
 use App\Service\LogistiService;
 use App\Service\MesagatService;
 use App\Service\MoyasarService;
@@ -50,10 +52,7 @@ class OrderController extends Controller
      */
 
 
-    public function __construct(public WatsappService $watsappService, public StripeService $stripeService)
-    {
-
-    }
+    public function __construct(public WatsappService $watsappService, public StripeService $stripeService) {}
     public function index(Request $request)
     {
 
@@ -77,13 +76,13 @@ class OrderController extends Controller
         $orders = $auth->orders()->with('status', 'items.product.specifications')->orderBy('created_at', 'desc');
 
 
-        if($type) {
-            if($type == 'booked') {
-                $orders = $orders->whereHas('status', function($status) {
+        if ($type) {
+            if ($type == 'booked') {
+                $orders = $orders->whereHas('status', function ($status) {
                     $status->where('type', 'processing');
                 });
             } else {
-                $orders = $orders->whereHas('status', function($status) {
+                $orders = $orders->whereHas('status', function ($status) {
                     $status->where('type', 'finished');
                 });
             }
@@ -99,11 +98,12 @@ class OrderController extends Controller
 
     public function store(Request $request)
     {
+
         $auth = auth()->user();
         $reference = Order::latest()->first() ? Order::latest()->first()->reference + 1 : 1;
         $default_status = Status::where('default', 1)->first();
 
-        if(!$default_status) {
+        if (!$default_status) {
             return $this->sendRes(translate('you should create a default status'), false, [], [], 400);
         }
         $creation_order_status = $default_status->id;
@@ -114,31 +114,24 @@ class OrderController extends Controller
             'count.*' => ['required', 'integer', 'min:1'],
 
             'color_ids' => ['required', 'array'],
-            'color_ids.*' => ['required', Rule::exists('products_colors', 'id')->where(function ($query) use ($request) {
-                foreach($request->product_ids as $product_id) {
-                    $query->where('product_id', $product_id);
-                }
-            })],
+            'color_ids.*' => ['required',  new BelongsToProduct('products_colors')],
 
             'addons' => ['nullable', 'array'],
             'addons.*' => ['nullable', 'array'],
-            'addons.*.*' => ['required', Rule::exists('products_addons', 'id')->where(function ($query) use ($request) {
-                foreach($request->product_ids as $product_id) {
-                    $query->where('product_id', $product_id);
-                }
-            })],
+            'addons.*.*' => ['required', new BelongsToProduct('products_addons')],
             'version_ids' => ['nullable', 'array'],
-            'version_ids.*' => ['nullable', Rule::exists('products_versions', 'id')->where(function ($query) use ($request) {
-                foreach($request->product_ids as $product_id) {
-                    $query->where('product_id', $product_id);
-                }
-            })],
+            'version_ids.*' => ['nullable', new BelongsToProduct('products_versions')],
             'delivery_location_id' => ['required', 'exists:countries,id'],
             'shipping_method_id' => ['required', 'exists:shipping_methods,id'],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
-            // 'card_id' => ['required_if:payment_method_id,2', Rule::exists('users_cards', 'id')->where(function ($query) use ($auth) {
-            //     $query->where('user_id', $auth->id);
-            // })],
+
+            'delivery_information.first_name' => ['required', 'string', 'max:255'],
+            'delivery_information.last_name' => ['required', 'string', 'max:255'],
+            'delivery_information.address' => ['required', 'string', 'max:255'],
+            'delivery_information.city' => ['required', 'string', 'max:255'],
+            'delivery_information.zip_code' => ['required', 'string', 'max:255'],
+            'delivery_information.phone_code' => ['required', 'string', 'exists:countries,call_key'],
+            'delivery_information.phone' => ['required', 'string', 'max:255'],
         ];
 
 
@@ -159,30 +152,10 @@ class OrderController extends Controller
             'payment_method_id' => $request->payment_method_id,
         ];
 
-
-        // If The Payment Method is Credit/Debit Card
-        if($request->payment_method_id == 2) {
-            // $data['card_id'] = $request->card_id;
-
-            // $customer_id = 'cus_Stzp6nd0GBbcZ8';
-            // $cardId = 'card_1RyBsPFG6Zq4MxzkOkoi9o0r';
-
-            // return $this->stripeService->createCard($customer_id);
-
-            // return $this->stripeService->createCustomer();
-            // return $this->stripeService->createPaymentIntent();
-            // return $this->stripeService->listPaymentIntent();
-            $id = 'pi_3RyBI6FG6Zq4Mxzk1j0iUQKs';
-            // return $this->stripeService->confirmPaymentIntent($id, $cardId);
-            // return $this->stripeService->capturePaymentIntent($id);
-
-            // return $this->stripeService->createPaymentIntent();
-        }
-
         $order = Order::create($data);
         $order->status_history()->attach($creation_order_status); // attach default status
         $totals = 0;
-        foreach($request->product_ids as $index => $product_id) {
+        foreach ($request->product_ids as $index => $product_id) {
             $product = Product::findOrFail($product_id);
             $color_id = $request->color_ids[$index];
             $version_id = isset($request->version_ids[$index]) ? $request->version_ids[$index] : null;
@@ -194,7 +167,7 @@ class OrderController extends Controller
             if ($addons) {
                 foreach ($addons as $addon_id) {
                     $addon = $product->addons()->findOrFail($addon_id);
-                    if($addon) {
+                    if ($addon) {
                         $addons_price += $addon->price;
                     }
                 }
@@ -218,9 +191,9 @@ class OrderController extends Controller
         $shipping_method = ShippingMethod::find($request->shipping_method_id);
         $shipping_value = 0;
         $grand_total = 0;
-        if($shipping_method->type == 'number') {
+        if ($shipping_method->type == 'number') {
             $grand_total = $totals + $shipping_method->value;
-        } else if($shipping_method->type == 'percent') {
+        } else if ($shipping_method->type == 'percent') {
             $grand_total = $totals + ($totals *  ($shipping_method->value / 100));
         }
 
@@ -233,11 +206,11 @@ class OrderController extends Controller
             'grand_total' => $grand_total,
         ]);
 
-         // If The Payment Method is Credit/Debit Card
-        if($request->payment_method_id == 2) {
+        // If The Payment Method is Credit/Debit Card
+        if ($request->payment_method_id == 2) {
             $title_notify = __('orders.order created success please confirm your payment gateway');
             $paymentIntent = $this->stripeService->createPaymentIntent($grand_total);
-            if($paymentIntent) {
+            if ($paymentIntent) {
                 Payment::create([
                     'paid_user_id' => auth()->id(),
                     'order_id' => $order->id,
@@ -259,11 +232,23 @@ class OrderController extends Controller
             'content' => $title_notify
         ]);
 
+        // Create Delivery Information
+        OrderDeliveryInformation::create([
+            'order_id' => $order->id,
+            'first_name' => $request->delivery_information['first_name'],
+            'last_name' => $request->delivery_information['last_name'],
+            'address' => $request->delivery_information['address'],
+            'city' => $request->delivery_information['city'],
+            'zip_code' => $request->delivery_information['zip_code'],
+            'phone_code' => $request->delivery_information['phone_code'],
+            'phone' => $request->delivery_information['phone'],
+        ]);
+
         $data = [
             'reference' => $order->reference,
             'payment_method' => $order->payment_method,
         ];
-        if($order->payment_method->id == 2) {
+        if ($order->payment_method->id == 2) {
             $data['stripe_public_key'] = env('STRIPE_PUBLIC_KEY');
             $data['payment'] = $order->payment;
         }
@@ -278,15 +263,14 @@ class OrderController extends Controller
         $client = auth()->user();
 
         $order = $client->orders()->where('uuid', $uuid)->first();
-        if(!$order) {
+        if (!$order) {
             return $this->sendRes(translate('order not found'), false, [], [], 400);
         }
 
-        $order->load(['items.product.specifications', 'status', 'delivery_location']);
+        $order->load(['items.product.specifications', 'status', 'delivery_location', 'delivery_information']);
 
         $order = new OrderResource($order);
         return $this->sendRes(translate('order data'), true, $order);
-
     }
 
 
@@ -294,7 +278,7 @@ class OrderController extends Controller
     {
         $client = auth()->user();
         $order = $client->orders()->where('uuid', $uuid)->first();
-        if(!$order) {
+        if (!$order) {
             return $this->sendRes(translate('order not found'), false, [], [], 400);
         }
 
@@ -305,7 +289,5 @@ class OrderController extends Controller
             'status_history' => $status_history
         ];
         return $this->sendRes(translate('order status history'), true, $data);
-
     }
-
 }
