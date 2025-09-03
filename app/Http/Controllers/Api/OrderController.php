@@ -125,14 +125,6 @@ class OrderController extends Controller
             'delivery_location_id' => ['required', 'exists:countries,id'],
             'shipping_method_id' => ['required', 'exists:shipping_methods,id'],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
-
-            'delivery_information.first_name' => ['required', 'string', 'max:255'],
-            'delivery_information.last_name' => ['required', 'string', 'max:255'],
-            'delivery_information.address' => ['required', 'string', 'max:255'],
-            'delivery_information.city' => ['required', 'string', 'max:255'],
-            'delivery_information.zip_code' => ['required', 'string', 'max:255'],
-            'delivery_information.phone_code' => ['required', 'string', 'exists:countries,call_key'],
-            'delivery_information.phone' => ['required', 'string', 'max:255'],
         ];
 
 
@@ -152,26 +144,6 @@ class OrderController extends Controller
             'shipping_method_id' => $request->shipping_method_id,
             'payment_method_id' => $request->payment_method_id,
         ];
-
-
-        // If The Payment Method is Credit/Debit Card
-        if($request->payment_method_id == 2) {
-            // $data['card_id'] = $request->card_id;
-
-            // $customer_id = 'cus_Stzp6nd0GBbcZ8';
-            // $cardId = 'card_1RyBsPFG6Zq4MxzkOkoi9o0r';
-
-            // return $this->stripeService->createCard($customer_id);
-
-            // return $this->stripeService->createCustomer();
-            // return $this->stripeService->createPaymentIntent();
-            // return $this->stripeService->listPaymentIntent();
-            $id = 'pi_3RyBI6FG6Zq4Mxzk1j0iUQKs';
-            // return $this->stripeService->confirmPaymentIntent($id, $cardId);
-            // return $this->stripeService->capturePaymentIntent($id);
-
-            // return $this->stripeService->createPaymentIntent();
-        }
 
         $order = Order::create($data);
         $order->status_history()->attach($creation_order_status); // attach default status
